@@ -4,7 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-import { StoreProvider } from './context/StoreContext'; 
+// Quitamos el StoreProvider de acá porque ya lo tenés en App.jsx envolviendo 
+// específicamente las rutas que lo necesitan. Menos carga inicial = más velocidad.
 
 const rootElement = document.getElementById('root');
 
@@ -19,5 +20,6 @@ if (rootElement) {
     </React.StrictMode>
   );
 } else {
-  console.error("No se encontró el elemento 'root'");
+  // Un pequeño toque de seguridad para el equipo de Riva Estudio
+  console.error("Critical Error: 'root' element not found. Check index.html");
 }

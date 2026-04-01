@@ -1,53 +1,65 @@
-// supabase/functions/save-mp-settings/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
-  // 1. Crear cliente Supabase con privilegios de ADMIN (Service Role)
-  // Esto es necesario para poder escribir en campos protegidos.
-  const supabaseAdmin = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  )
-
-  // 2. Obtener el usuario que hace la petición (Seguridad)
-  const authHeader = req.headers.get('Authorization')!
-  const token = authHeader.replace('Bearer ', '')
-  const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
-
-  if (userError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+  // 1. Manejo de CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
 
-  // 3. Obtener datos del body
-  const { store_id, mp_public_key, mp_access_token } = await req.json()
+  try {
+    // 2. Crear cliente Supabase usando la variable CORRECTA
+    // CAMBIO AQUÍ: Usamos 'SERVICE_ROLE_KEY' (sin el SUPABASE_)
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SERVICE_ROLE_KEY') ?? '' 
+    )
 
-  // 4. Validar que el usuario sea el DUEÑO de esa tienda
-  const { data: store } = await supabaseAdmin
-    .from('stores')
-    .select('owner_id')
-    .eq('id', store_id)
-    .single()
+    // 3. Obtener los datos que envía el Admin Panel
+    const { 
+      store_id, 
+      mp_access_token, 
+      mp_public_key,
+      mp_client_id, 
+      mp_client_secret 
+    } = await req.json()
 
-  if (!store || store.owner_id !== user.id) {
-    return new Response(JSON.stringify({ error: 'Forbidden: No sos el dueño.' }), { status: 403 })
+    if (!store_id) throw new Error('Falta el ID de la tienda')
+
+    // 4. Guardar en la nueva tabla 'store_secrets'
+    const { error } = await supabaseClient
+      .from('store_secrets')
+      .upsert({
+        id: store_id,
+        mp_access_token,
+        mp_public_key,
+        mp_client_id,
+        mp_client_secret,
+        updated_at: new Date().toISOString()
+      })
+
+    if (error) throw error
+
+    return new Response(
+      JSON.stringify({ success: true, message: 'Configuración guardada en bóveda segura' }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    )
+
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400 
+      }
+    )
   }
-
-  // 5. Guardar los tokens de forma segura
-  const { error: updateError } = await supabaseAdmin
-    .from('stores')
-    .update({ 
-      mp_public_key, 
-      mp_access_token 
-    })
-    .eq('id', store_id)
-
-  if (updateError) {
-    return new Response(JSON.stringify({ error: updateError.message }), { status: 400 })
-  }
-
-  return new Response(
-    JSON.stringify({ message: 'Credenciales guardadas con éxito', success: true }),
-    { headers: { "Content-Type": "application/json" } }
-  )
 })

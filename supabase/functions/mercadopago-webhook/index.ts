@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,49 +7,91 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Manejo de CORS (por si acaso)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
+    // 1. Configurar Cliente Supabase (Admin)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SERVICE_ROLE_KEY') ?? '' // ⚠️ Usa SERVICE_ROLE_KEY, no la anónima
     )
 
-    // 1. Obtener los datos que envía Mercado Pago
-    const url = new URL(req.url)
-    const body = await req.json()
+    // 2. Leer datos de la URL y del Body
+    const requestUrl = new URL(req.url)
+    const store_id = requestUrl.searchParams.get('store_id') // <--- EL DATO CLAVE
     
-    // MP envía el ID del pago en body.data.id o en el query string
-    const paymentId = body.data?.id || url.searchParams.get('data.id')
-    const type = body.type || url.searchParams.get('type')
+    // MP a veces manda datos por Query y a veces por Body
+    let body = {}
+    try { body = await req.json() } catch (_) {}
+    
+    const type = body.type || requestUrl.searchParams.get('type') || body.topic
+    const paymentId = body.data?.id || requestUrl.searchParams.get('data.id') || body.id
 
-    console.log(`🔔 Recibida notificación de MP: Tipo ${type}, ID: ${paymentId}`)
+    // Solo nos interesa si es una notificación de pago
+    if (type !== 'payment' || !paymentId) {
+       return new Response('OK', { status: 200 })
+    }
 
-    if (type === 'payment' && paymentId) {
-      // 2. Consultar el estado real del pago en la API de Mercado Pago
-      // Nota: Aquí necesitarías el access_token del comercio. 
-      // Por simplicidad, buscamos el pedido que coincida con el external_reference que MP devuelve
-      
-      // Consultamos a MP (usando tu token maestro o el del local)
-      // Para esta versión, vamos a buscar el pago y validar su estado
-      const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-        headers: { Authorization: `Bearer ${Deno.env.get('MASTER_SERVICE_KEY')}` } // Usamos el token que guardamos
-      })
-      
-      const paymentData = await mpResponse.json()
+    console.log(`🔔 Webhook recibido. Store: ${store_id}, Payment ID: ${paymentId}`)
 
-      if (paymentData.status === 'approved') {
-        const orderId = paymentData.external_reference // El ID que enviamos al crear la preferencia
+    // 3. Obtener el Token CORRECTO (Dinámico)
+    let accessToken = Deno.env.get('MASTER_SERVICE_KEY') // Por defecto, el tuyo
 
-        // 3. Actualizar el pedido en la DB
-        const { error: updateError } = await supabaseAdmin
-          .from('orders')
-          .update({ paid: true, status: 'confirmado' }) // Lo marcamos como pagado y confirmado automáticamente
-          .eq('id', orderId)
+    if (store_id) {
+        // Si viene un ID de tienda, buscamos SUS credenciales
+        const { data: secret, error } = await supabaseAdmin
+            .from('store_secrets')
+            .select('mp_access_token')
+            .eq('id', store_id)
+            .single()
+        
+        if (!error && secret?.mp_access_token) {
+            accessToken = secret.mp_access_token
+            console.log(`🔑 Usando credenciales del Store ID ${store_id}`)
+        } else {
+            console.error(`❌ No se encontraron credenciales para Store ID ${store_id}`)
+            return new Response('Store credentials not found', { status: 400 })
+        }
+    }
 
-        if (updateError) throw updateError
-        console.log(`✅ Pedido #${orderId} marcado como PAGADO automáticamente.`)
-      }
+    // 4. Consultar a Mercado Pago con la llave correcta
+    const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+    })
+    
+    if (!mpResponse.ok) {
+        console.error("❌ Error consultando MP:", await mpResponse.text())
+        return new Response('Error fetching payment', { status: 400 })
+    }
+
+    const paymentData = await mpResponse.json()
+
+    // 5. Si está aprobado, actualizamos la base de datos
+    if (paymentData.status === 'approved') {
+        const orderId = paymentData.external_reference // Este es el ID de tu orden o turno
+        const amount = paymentData.transaction_amount
+
+        console.log(`✅ Pago Aprobado! ID Ref: ${orderId}, Monto: ${amount}`)
+
+        // A. Intentamos actualizar GASTRONOMÍA (orders)
+        const { error: orderError, data: orderData } = await supabaseAdmin
+            .from('orders')
+            .update({ status: 'confirmado', payment_status: 'paid', payment_id: paymentId })
+            .eq('id', orderId)
+            .select()
+
+        // B. Si no era una orden, intentamos actualizar TURNOS (appointments)
+        if (!orderData || orderData.length === 0) {
+             const { error: aptError } = await supabaseAdmin
+                .from('appointments')
+                .update({ status: 'confirmado', payment_method: 'mercadopago', payment_id: paymentId })
+                .eq('id', orderId)
+            
+             if (!aptError) console.log("✂️ Turno actualizado correctamente")
+        } else {
+             console.log("🍔 Pedido actualizado correctamente")
+        }
     }
 
     return new Response(JSON.stringify({ received: true }), { 
@@ -58,7 +100,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error("❌ Error Webhook:", error.message)
+    console.error("❌ Error CRÍTICO Webhook:", error.message)
     return new Response(JSON.stringify({ error: error.message }), { status: 500 })
   }
 })

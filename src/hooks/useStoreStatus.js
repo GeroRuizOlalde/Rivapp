@@ -1,43 +1,71 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
-import { useStore } from '../context/StoreContext'; // 🟢 Importamos el contexto
+import { useStore } from '../context/StoreContext';
 
-export const useStoreStatus = () => {
-  const { store } = useStore(); // 🟢 Obtenemos la tienda actual
-  const [isOpen, setIsOpen] = useState(true); // Asumimos abierto al inicio
+export function useStoreStatus() {
+  const { store } = useStore();
+  const [isOpen, setIsOpen] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Si no hay tienda cargada aún, esperamos
-    if (!store?.id) return;
+    let subscription;
 
     const fetchStatus = async () => {
+      // Si no hay ID de tienda, esperamos (pero quitamos loading para no trabar)
+      if (!store?.id) {
+          setLoading(false);
+          return;
+      }
+      
       try {
-        // Leemos la fila de la tabla 'config' correspondiente a ESTA tienda
+        // 🟢 CAMBIO CLAVE: Leemos de 'stores_public' (la vista segura)
+        // en lugar de 'stores' (la tabla privada que bloqueaba la carga).
         const { data, error } = await supabase
-          .from('config')
-          .select('is_open')
-          .eq('store_id', store.id) // 🟢 FILTRO CLAVE: Solo la config de este negocio
-          .limit(1)
+          .from('stores_public') 
+          .select('is_active')
+          .eq('id', store.id)
           .single();
 
-        // Ignoramos error si no existe config (PGRST116), asumimos default
-        if (error && error.code !== 'PGRST116') throw error;
-        
-        // Si data existe, actualizamos el estado
-        if (data) {
-          setIsOpen(data.is_open);
+        if (error) {
+            console.warn("No se pudo leer estado, asumiendo abierto:", error.message);
+            setIsOpen(true);
+        } else {
+            setIsOpen(data?.is_active ?? true); 
         }
-      } catch (error) {
-        console.error("Error leyendo estado del local:", error);
+      } catch (err) {
+        console.error("Error crítico en status:", err);
+        setIsOpen(true);
       } finally {
         setLoading(false);
       }
     };
 
     fetchStatus();
-    
-  }, [store]); // 🟢 Agregamos store como dependencia
+
+    // 🟢 REALTIME: Escuchar cambios en la tabla original 'stores'
+    // (Esto suele funcionar aunque no tengas permiso de lectura directa, 
+    // siempre que la publicación de Supabase esté activa)
+    subscription = supabase
+      .channel('store_status_changes')
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'stores', 
+          filter: `id=eq.${store?.id}` 
+        }, 
+        (payload) => {
+          if (payload.new && typeof payload.new.is_active !== 'undefined') {
+            setIsOpen(payload.new.is_active);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
+  }, [store?.id]);
 
   return { isOpen, loading };
-};
+}

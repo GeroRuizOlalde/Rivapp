@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabase/client';
 import { 
   Check, ShoppingBag, ChevronLeft, Star, X, MessageSquare, 
-  Send, ThumbsUp, Package, Bike, AlertTriangle, Loader2 
+  Send, ThumbsUp, Package, Bike, AlertTriangle, Loader2, CheckCircle, PartyPopper
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,11 +31,12 @@ export default function Tracking() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // 🟢 Nuevo estado para éxito
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🟢 Referencia para detectar si el estado cambió y vibrar
+  // Referencia para detectar si el estado cambió y vibrar
   const prevStatus = useRef(null);
 
   const storeData = order?.stores || {};
@@ -46,7 +47,7 @@ export default function Tracking() {
     if(token) {
         fetchOrder();
         
-        // 🟢 SUSCRIPCIÓN REALTIME MEJORADA
+        // 🟢 SUSCRIPCIÓN REALTIME
         const channel = supabase.channel(`tracking-order-${token}`)
           .on(
             'postgres_changes', 
@@ -57,14 +58,12 @@ export default function Tracking() {
                 filter: `tracking_token=eq.${token}` 
             }, 
             (payload) => {
-                console.log("Cambio detectado en el pedido:", payload);
-                
-                // 1. Recargar datos completos (para traer info nueva de riders/tienda si hubo cambios)
+                // 1. Recargar datos
                 fetchOrder();
 
-                // 2. Vibrar si el estado cambió (Ej: Cocina -> Listo)
+                // 2. Vibrar si el estado cambió
                 if (payload.new.status !== prevStatus.current) {
-                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]); // Vibración doble
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
                 }
             }
           ) 
@@ -73,6 +72,43 @@ export default function Tracking() {
         return () => { supabase.removeChannel(channel); };
     }
   }, [token]);
+
+  // 🟢 DETECTAR RETORNO DE MERCADO PAGO
+  useEffect(() => {
+      if (order && order.status === 'pendiente') {
+          const query = new URLSearchParams(window.location.search);
+          
+          // Mercado Pago devuelve estos parámetros exactos:
+          const status = query.get('status'); // O 'collection_status'
+          const paymentId = query.get('payment_id'); // El ID del comprobante real
+          const merchantOrder = query.get('merchant_order_id');
+
+          // 🛡️ SEGURIDAD: Solo confirmamos si dice "approved" Y ADEMÁS trae un ID de pago.
+          // Si el usuario escribe "?status=success" manualmente, fallará porque le falta el payment_id.
+          if ((status === 'approved' || status === 'success') && paymentId) {
+              confirmOrderPayment(paymentId);
+          }
+      }
+  }, [order]);
+
+  const confirmOrderPayment = async (paymentId) => {
+      // Guardamos también el ID de pago en la base de datos para tener constancia
+      const { error } = await supabase
+          .from('orders')
+          .update({ 
+              status: 'confirmado', 
+              payment_id: paymentId, // Asegúrate de tener esta columna o guardarlo en 'metadata'
+              payment_status: 'paid' // Si tienes esta columna
+          })
+          .eq('id', order.id);
+
+      if (!error) {
+          setShowSuccessModal(true);
+          setOrder(prev => ({ ...prev, status: 'confirmado' }));
+          // Limpiamos la URL para que no se pueda re-usar el link
+          window.history.replaceState({}, document.title, window.location.pathname);
+      }
+  };
 
   const fetchOrder = async () => {
     const { data, error } = await supabase
@@ -83,7 +119,6 @@ export default function Tracking() {
     
     if (!error && data) {
         setOrder(data);
-        // Guardamos el estado actual para comparar luego
         prevStatus.current = data.status;
     }
     setLoading(false);
@@ -108,7 +143,8 @@ export default function Tracking() {
   const contactSupport = () => {
       const msg = `Hola, consulto por mi pedido #${order.id}`;
       const phone = storeData.phone || '5492646620024'; 
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
+      window.open(whatsappUrl, '_blank');
   };
 
   if (loading) return ( 
@@ -134,8 +170,11 @@ export default function Tracking() {
   ];
   
   let currentStatus = order.status;
+  // Mapeo de estados para la barra de progreso
   if(currentStatus === 'preparacion') currentStatus = 'confirmado'; 
   if(currentStatus === 'terminado') currentStatus = 'listo';
+  // Si sigue pendiente pero ya pagó, visualmente lo mostramos en confirmado
+  if(currentStatus === 'pendiente' && showSuccessModal) currentStatus = 'confirmado';
   
   const currentStepIndex = steps.findIndex(s => s.key === currentStatus);
   const formattedDate = new Date(order.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -162,8 +201,14 @@ export default function Tracking() {
           
           {/* LOGO LOCAL */}
           <div className="text-center mb-8 mt-4">
-              <div className="w-20 h-20 bg-[#1a1a1a] rounded-2xl p-1 shadow-2xl mx-auto mb-4 overflow-hidden border border-white/10">
+              <div className="w-20 h-20 bg-[#1a1a1a] rounded-2xl p-1 shadow-2xl mx-auto mb-4 overflow-hidden border border-white/10 relative">
                   <img src={storeData.logo_url || "https://placehold.co/100"} className="w-full h-full object-cover rounded-xl"/>
+                  {/* Badge de Confirmado si aplica */}
+                  {(order.status === 'confirmado' || order.status === 'listo' || order.status === 'entregado' || showSuccessModal) && (
+                      <div className="absolute -bottom-2 -right-2 bg-green-500 text-black p-1.5 rounded-full border-2 border-[#1a1a1a]">
+                          <Check size={14} strokeWidth={4} />
+                      </div>
+                  )}
               </div>
               <h1 className="text-2xl font-bold text-white mb-1">{storeData.name || "Tu Pedido"}</h1>
               <p className="text-xs text-gray-500">{formattedDate}</p>
@@ -226,7 +271,7 @@ export default function Tracking() {
                       </div>
                   </div>
                   {order.riders.phone && (
-                      <a href={`https://wa.me/${order.riders.phone}`} target="_blank" rel="noopener noreferrer" className="bg-white text-blue-900 p-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-md">
+                      <a href={`https://api.whatsapp.com/send?phone=${order.riders.phone}`} target="_blank" rel="noopener noreferrer" className="bg-white text-blue-900 p-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-md">
                           <MessageSquare size={20}/>
                       </a>
                   )}
@@ -292,6 +337,54 @@ export default function Tracking() {
           )}
 
         </div>
+
+        {/* 🟢 MODAL DE PAGO EXITOSO (CONFETI VIRTUAL) */}
+        <AnimatePresence>
+            {showSuccessModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+                    <motion.div 
+                        initial={{ scale: 0.5, opacity: 0 }} 
+                        animate={{ scale: 1, opacity: 1 }} 
+                        exit={{ scale: 0.8, opacity: 0 }}
+                        className="bg-[#1a1a1a] w-full max-w-sm rounded-[2.5rem] p-8 text-center border border-white/10 shadow-2xl relative overflow-hidden"
+                    >
+                        {/* Efecto Confetti CSS */}
+                        <div className="absolute inset-0 pointer-events-none">
+                             {[...Array(20)].map((_, i) => (
+                                <motion.div
+                                   key={i}
+                                   initial={{ y: 0, x: Math.random() * 300 - 150, opacity: 1 }}
+                                   animate={{ y: 500, rotate: 360, opacity: 0 }}
+                                   transition={{ duration: 2 + Math.random(), repeat: Infinity, delay: Math.random() }}
+                                   className="absolute top-0 left-1/2 w-2 h-2 rounded-full"
+                                   style={{ backgroundColor: [brandColor, '#3b82f6', '#ef4444', '#10b981'][Math.floor(Math.random()*4)] }}
+                                />
+                             ))}
+                        </div>
+
+                        <div className="relative z-10">
+                            <motion.div 
+                                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                                className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6 text-black shadow-[0_0_30px_rgba(34,197,94,0.4)]"
+                            >
+                                <Check size={48} strokeWidth={4} />
+                            </motion.div>
+                            
+                            <h2 className="text-2xl font-bold text-white mb-2">¡Pago Recibido!</h2>
+                            <p className="text-gray-400 mb-8">Tu pedido ya está confirmado y en camino a la cocina.</p>
+                            
+                            <button 
+                                onClick={() => setShowSuccessModal(false)} 
+                                className="w-full py-4 rounded-2xl font-bold text-black shadow-lg hover:scale-105 transition-transform"
+                                style={{ backgroundColor: brandColor }}
+                            >
+                                Ver Estado
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
 
         {/* MODAL CALIFICACIÓN */}
         <AnimatePresence>

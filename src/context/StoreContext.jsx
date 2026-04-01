@@ -1,121 +1,174 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
+import { useLocation } from 'react-router-dom';
 
 const StoreContext = createContext();
 
-export const useStore = () => {
-  return useContext(StoreContext);
-};
-
 export const StoreProvider = ({ children }) => {
   const [store, setStore] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [branches, setBranches] = useState([]); 
+  const [selectedBranch, setSelectedBranch] = useState(null); 
   
-  // 🟢 AGREGADO: Estado para la sucursal seleccionada (necesario para el Admin)
-  const [selectedBranch, setSelectedBranch] = useState(null);
+  // 🟢 NUEVO: Estados para Usuario y Rol
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null); // 'owner', 'admin', 'staff', 'rider', o null
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const location = useLocation();
 
-  const isMounted = useRef(true);
+  // 1. Efecto Principal: Cargar Tienda, Sucursales y Usuario
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const fetchStore = async () => {
-    try {
-      // --- 1. LÓGICA DE SLUG MEJORADA ---
-      // Detectamos si es ruta (ej: rivapp.com.ar/demo) o subdominio (demo.rivapp.com.ar)
-      const hostname = window.location.hostname;
-      const pathSegment = window.location.pathname.split('/')[1]; // Obtiene lo que sigue a la barra (ej: "demo")
+        // A. Obtener Usuario Actual (Si existe)
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        setUser(currentUser);
 
-      let slug = 'demo'; // Valor por defecto
+        // B. Detectar SLUG
+        const pathParts = location.pathname.split('/');
+        const slugIndex = pathParts.findIndex(p => p !== '' && !['login', 'register', 'dashboard', 'create-store'].includes(p));
+        const slug = slugIndex !== -1 ? pathParts[slugIndex] : null;
 
-      // Si hay un segmento válido en la URL (y no es una ruta de sistema), lo usamos
-      // Esto permite entrar a localhost:5173/rivapp o localhost:5173/hamburgueseria
-      if (pathSegment && !['admin', 'login', 'dashboard'].includes(pathSegment)) {
-        slug = pathSegment;
-      } else if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        // Fallback a subdominios si estás en producción y usas esa estrategia
-        slug = hostname.split('.')[0];
-      }
-
-      console.log("Cargando tienda para slug:", slug);
-
-      // --- 2. BUSQUEDA BLINDADA EN SUPABASE ---
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('slug', slug)
-        // 🛡️ CORRECCIÓN CLAVE PARA EVITAR PANTALLA NEGRA:
-        .limit(1)       // Obliga a traer solo 1, aunque haya duplicados
-        .maybeSingle(); // No explota si hay 0 o muchos resultados. Devuelve null si no existe.
-
-      if (error) throw error;
-
-      if (isMounted.current) {
-        if (data) {
-          setStore(data);
-        } else {
-          console.warn(`Tienda con slug '${slug}' no encontrada.`);
-          // Aquí podrías setear un estado de error o dejar store en null para mostrar 404
-          setStore(null);
+        if (!slug) {
+            setLoading(false);
+            return;
         }
-      }
-    } catch (error) {
-      console.error("Error crítico cargando tienda:", error.message);
-    } finally {
-      if (isMounted.current) {
+
+        console.log(`🔍 Buscando tienda: ${slug}`);
+
+        // C. Buscar la Tienda
+        const { data: storeData, error: storeError } = await supabase
+          .from('stores_public') 
+          .select('*')
+          .eq('slug', slug)
+          .single();
+
+        if (storeError) throw storeError;
+        setStore(storeData);
+
+        // D. Buscar Sucursales
+        const { data: branchesData, error: branchError } = await supabase
+            .from('branches')
+            .select('*')
+            .eq('store_id', storeData.id)
+            .eq('is_active', true);
+        
+        let initialBranch = null;
+
+        if (!branchError && branchesData) {
+            setBranches(branchesData);
+            
+            // Lógica de Selección de Sucursal
+            const savedBranchId = localStorage.getItem(`rivapp_branch_${storeData.id}`);
+            const foundSaved = branchesData.find(b => b.id === savedBranchId);
+
+            if (foundSaved) {
+                initialBranch = foundSaved;
+            } else if (branchesData.length === 1) {
+                initialBranch = branchesData[0];
+            }
+            // Nota: Si hay muchas y no hay guardada, queda null para que el selector obligue a elegir
+        }
+        
+        setSelectedBranch(initialBranch);
+
+        // E. 🚀 LÓGICA DE ROLES (Aquí sucede la magia)
+        if (currentUser && storeData) {
+            await determineUserRole(currentUser.id, storeData.id, initialBranch?.id);
+        }
+
+      } catch (err) {
+        console.error("Error StoreContext:", err.message);
+        setError(err);
+      } finally {
         setLoading(false);
       }
-    }
+    };
+
+    fetchStoreData();
+  }, [location.pathname]);
+
+  // 2. Función auxiliar para calcular el ROL exacto
+  const determineUserRole = async (userId, storeId, branchId) => {
+      // Prioridad 1: ¿Es el DUEÑO de la tienda?
+      const { data: ownerMembership } = await supabase
+          .from('stores') // Tabla real, no pública, para chequear owner_id
+          .select('owner_id')
+          .eq('id', storeId)
+          .eq('owner_id', userId)
+          .maybeSingle();
+
+      if (ownerMembership) {
+          console.log("👑 Usuario es DUEÑO");
+          setRole('owner');
+          return;
+      }
+
+      // Prioridad 2: ¿Es Staff de la tienda (Store Membership)?
+      const { data: storeMember } = await supabase
+          .from('store_memberships')
+          .select('role')
+          .eq('store_id', storeId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (storeMember) {
+          console.log("👔 Usuario es Staff de Tienda:", storeMember.role);
+          setRole(storeMember.role);
+          return;
+      }
+
+      // Prioridad 3: ¿Es Staff de una SUCURSAL específica?
+      if (branchId) {
+          const { data: branchMember } = await supabase
+              .from('branch_memberships')
+              .select('role')
+              .eq('branch_id', branchId)
+              .eq('user_id', userId)
+              .maybeSingle();
+
+          if (branchMember) {
+              console.log("🏪 Usuario es Staff de Sucursal:", branchMember.role);
+              setRole(branchMember.role);
+              return;
+          }
+      }
+
+      // Si no encontró nada
+      setRole('customer'); // O null
   };
 
-  useEffect(() => {
-    isMounted.current = true;
-    fetchStore();
-
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  // 🟢 REALTIME: Escuchar cambios en la configuración de la tienda
-  useEffect(() => {
-    if (!store?.id) return;
-
-    const channel = supabase
-      .channel(`store_update_${store.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'stores',
-          filter: `id=eq.${store.id}`,
-        },
-        (payload) => {
-          console.log('Actualización de tienda en vivo:', payload);
-          setStore(payload.new);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [store?.id]);
-
-  const refreshStore = () => {
-    fetchStore();
-  };
-
-  const value = {
-    store,
-    loading,
-    refreshStore,
-    // Exportamos también el manejo de sucursales para que el Admin funcione bien
-    selectedBranch,
-    setSelectedBranch
+  // 3. Recalcular rol si cambia la sucursal manual
+  const selectBranch = async (branch) => {
+      setSelectedBranch(branch);
+      if (branch && store) {
+          localStorage.setItem(`rivapp_branch_${store.id}`, branch.id);
+          // Si cambia de sucursal, re-chequeamos permisos (un usuario puede ser Admin en A pero Cajero en B)
+          if (user) await determineUserRole(user.id, store.id, branch.id);
+      } else if (store) {
+          localStorage.removeItem(`rivapp_branch_${store.id}`);
+      }
   };
 
   return (
-    <StoreContext.Provider value={value}>
-      {!loading && children}
+    <StoreContext.Provider value={{ 
+        store, 
+        branches, 
+        selectedBranch, 
+        selectBranch, 
+        loading, 
+        error,
+        // 🟢 Exportamos User y Role para usarlo en los componentes
+        user,
+        role 
+    }}>
+      {children}
     </StoreContext.Provider>
   );
 };
+
+export const useStore = () => useContext(StoreContext);

@@ -85,7 +85,7 @@ export default function BookingHome() {
   const nextStepAfterService = () => { if (store.enable_staff_selection && staffList.length > 0) setStep(2); else { setSelectedStaff(null); setStep(3); } };
   const prevStepFromDate = () => { if (store.enable_staff_selection && staffList.length > 0) setStep(2); else setStep(1); };
 
-  // 🟢 CALCULAR CUPOS (CORREGIDO: FILTRA HORARIOS PASADOS)
+  // 🟢 CALCULAR CUPOS
   useEffect(() => {
     const calculateAvailability = async () => {
         if (!selectedDate || !selectedService) return;
@@ -112,33 +112,26 @@ export default function BookingHome() {
         let currentTime = new Date(`${selectedDate}T${daySchedule.open_time}`);
         const endTime = new Date(`${selectedDate}T${daySchedule.close_time}`);
         const durationMs = selectedService.duration_minutes * 60000;
-        const now = new Date(); // Hora actual para comparar
+        const now = new Date(); 
 
-        // Definir límite de simultaneidad
         let limit = 1;
         if (selectedStaff) {
             limit = 1; 
         } else {
-            // Si es sin preferencia, usamos el límite global o la cantidad de staff
             limit = (store.enable_multislots && store.max_concurrent_slots) 
                 ? store.max_concurrent_slots 
                 : (staffList.length > 0 ? staffList.length : 1);
         }
 
         while (currentTime.getTime() + durationMs <= endTime.getTime()) {
-            
-            // 🟢 FILTRO DE TIEMPO PASADO
-            // Si la fecha seleccionada es HOY y la hora del slot es menor a AHORA, saltamos
             if (currentTime < now) {
                 currentTime = new Date(currentTime.getTime() + durationMs);
-                continue; // Pasamos al siguiente horario
+                continue; 
             }
 
             const timeStr = currentTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-            // Asegurar formato HH:mm (ej: 09:00)
             const formattedTime = timeStr.length === 4 ? `0${timeStr}` : timeStr;
             
-            // Contar ocupados en este slot
             const busyCount = existingApts.filter(apt => {
                 const aptDate = new Date(apt.start_time);
                 const aptStr = aptDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -146,7 +139,7 @@ export default function BookingHome() {
                 
                 if (aptFormatted === formattedTime) {
                     if (selectedStaff) return apt.staff_id === selectedStaff.id;
-                    return true; // Sin preferencia cuenta todos
+                    return true; 
                 }
                 return false;
             }).length;
@@ -179,7 +172,7 @@ export default function BookingHome() {
 
   const copyAlias = () => { navigator.clipboard.writeText(store?.cbu_alias || "ALIAS"); setCopied(true); setTimeout(()=>setCopied(false),2000); };
 
-  // 🟢 CONFIRMACIÓN Y PAGO (Con Asignación Automática)
+  // 🟢 CONFIRMACIÓN Y PAGO
   const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime || !selectedService || !customerData.name || !customerData.phone) return;
     setSaving(true);
@@ -190,38 +183,32 @@ export default function BookingHome() {
         const endDateObj = new Date(startDateObj.getTime() + selectedService.duration_minutes * 60000);
         const finalPrice = appliedCoupon ? selectedService.price * (1 - appliedCoupon.discount/100) : selectedService.price;
 
-        // 🟢 LÓGICA DE ASIGNACIÓN AUTOMÁTICA ("MAGIC ASSIGN")
+        // Lógica de asignación
         let finalStaffId = selectedStaff ? selectedStaff.id : null;
 
         if (!finalStaffId) {
-            // 1. Buscamos turnos existentes en ESE horario exacto
-            const { data: busyApts } = await supabase
-                .from('appointments')
-                .select('staff_id')
-                .eq('store_id', store.id)
-                .eq('start_time', startDateObj.toISOString()) 
-                .neq('status', 'cancelado');
-
+            const { data: busyApts } = await supabase.from('appointments').select('staff_id').eq('store_id', store.id).eq('start_time', startDateObj.toISOString()).neq('status', 'cancelado');
             const busyStaffIds = busyApts.map(a => a.staff_id);
-
-            // 2. Filtramos el equipo: (Todos - Ocupados)
             const availableStaff = staffList.filter(s => !busyStaffIds.includes(s.id));
 
             if (availableStaff.length > 0) {
-                // Elegimos al primero disponible
                 finalStaffId = availableStaff[0].id;
+            } else if (store.enable_multislots) {
+                finalStaffId = staffList[0]?.id;
             } else {
-                alert("¡Ups! Ese horario acaba de ocuparse por completo. Por favor elige otro.");
+                alert("¡Ups! Ese horario acaba de ocuparse por completo.");
                 setSaving(false);
                 return;
             }
         }
 
-        // 1. Guardar Turno
+        if (!finalStaffId && staffList.length > 0) finalStaffId = staffList[0].id;
+
+        // Guardar Turno
         const { data: newApt, error } = await supabase.from('appointments').insert([{
             store_id: store.id,
             service_id: selectedService.id,
-            staff_id: finalStaffId, // Nunca null
+            staff_id: finalStaffId,
             customer_name: customerData.name,
             customer_phone: customerData.phone,
             start_time: startDateObj.toISOString(),
@@ -234,16 +221,12 @@ export default function BookingHome() {
 
         if (error) throw error;
 
-        // 2. MERCADO PAGO
+        // Mercado Pago
         if (paymentMethod === 'mercadopago') {
             const { data: mpData, error: mpError } = await supabase.functions.invoke('create-order-preference', {
                 body: JSON.stringify({
                     store_id: store.id,
-                    items: [{
-                        name: selectedService.name,
-                        price: finalPrice,
-                        quantity: 1
-                    }],
+                    items: [{ name: selectedService.name, price: finalPrice, quantity: 1 }],
                     order_id: newApt.id,
                     domain_url: window.location.origin,
                     type: 'appointment'
@@ -260,21 +243,66 @@ export default function BookingHome() {
             }
         }
 
-        // 3. WHATSAPP
+       // 3. WHATSAPP (SOLUCIÓN FINAL: ESPACIADO Y EMOJIS PERFECTOS) 📱
         const assignedStaffName = staffList.find(s => s.id === finalStaffId)?.name || "Staff";
         const [y, m, d] = selectedDate.split('-').map(Number);
-        const dateStr = new Date(y, m - 1, d).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
         
-        let text = `Hola *${store.name}*! 👋%0A%0AQuiero confirmar mi turno:%0A%0A👤 *Cliente:* ${customerData.name}%0A✂️ *Servicio:* ${selectedService.name}%0A`;
-        text += `💈 *Profesional:* ${assignedStaffName}%0A`;
-        text += `📅 *Fecha:* ${dateStr}%0A⏰ *Hora:* ${selectedTime} hs`;
-        if(appliedCoupon) text += `%0A🎟️ *Cupón:* ${appliedCoupon.code} (-${appliedCoupon.discount}%)%0A💰 *Total:* $${finalPrice}`;
-        text += `%0A💳 *Pago:* ${paymentMethod === 'mercadopago' ? 'Mercado Pago' : 'En el Local'}`;
+        const dateObj = new Date(y, m - 1, d);
+        const dateStr = dateObj.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+        const dateCapitalized = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+        
+        // Emojis con Código Matemático (No se rompen)
+        const E_WAVE = String.fromCodePoint(0x1F44B);      // 👋
+        const E_USER = String.fromCodePoint(0x1F464);      // 👤
+        const E_CUT = String.fromCodePoint(0x2702, 0xFE0F); // ✂️
+        const E_BARBER = String.fromCodePoint(0x1F488);    // 💈
+        const E_CAL = String.fromCodePoint(0x1F4C5);       // 📅
+        const E_CLOCK = String.fromCodePoint(0x23F0);      // ⏰
+        const E_TAG = String.fromCodePoint(0x1F3AB);       // 🎟️
+        const E_MONEY = String.fromCodePoint(0x1F4B0);     // 💰
+        const E_CARD = String.fromCodePoint(0x1F4B3);      // 💳
+        const E_CHECK = String.fromCodePoint(0x2705);      // ✅
+        const E_HOME = String.fromCodePoint(0x1F3E0);      // 🏠
 
-        window.open(`https://wa.me/${store.phone || ''}?text=${text}`, '_blank');
+        // Construimos el mensaje usando \n explícitos
+        let msg = `Hola *${store.name}*! ${E_WAVE}\n\n`;
+        msg += `Quiero confirmar mi turno:\n\n`;
+        msg += `${E_USER} *Cliente:* ${customerData.name}\n`;
+        msg += `${E_CUT} *Servicio:* ${selectedService.name}\n`;
+        msg += `${E_BARBER} *Profesional:* ${assignedStaffName}\n`;
+        msg += `${E_CAL} *Fecha:* ${dateCapitalized}\n`;
+        msg += `${E_CLOCK} *Hora:* ${selectedTime} hs\n`;
+
+        if(appliedCoupon) {
+            msg += `${E_TAG} *Cupón:* ${appliedCoupon.code} (-${appliedCoupon.discount}%)\n`;
+            msg += `${E_MONEY} *Total a pagar:* $${finalPrice}\n`;
+        }
+
+        const paymentText = paymentMethod === 'mercadopago' 
+            ? `${E_CHECK} Pagado con Mercado Pago` 
+            : `${E_HOME} A pagar en el Local`;
+            
+        msg += `${E_CARD} *Pago:* ${paymentText}`;
+
+        // 🚀 LA SOLUCIÓN AL ESPACIADO:
+        // encodeURIComponent convierte los \n en %0A, que es lo que WhatsApp necesita para hacer el salto.
+        const encodedMsg = encodeURIComponent(msg);
+        
+        // Armamos la URL manualmente para tener control total
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${store.phone || ''}&text=${encodedMsg}`;
+
+        window.open(whatsappUrl, '_blank');
         
         alert("¡Turno solicitado con éxito!");
-        setStep(1); setSelectedDate(null); setSelectedTime(''); setSelectedStaff(null); setCustomerData({ name: '', phone: '' }); setAppliedCoupon(null); setCouponCode('');
+        
+        // Reset
+        setStep(1); 
+        setSelectedDate(null); 
+        setSelectedTime(''); 
+        setSelectedStaff(null); 
+        setCustomerData({ name: '', phone: '' }); 
+        setAppliedCoupon(null); 
+        setCouponCode('');
 
     } catch (error) { console.error(error); alert("Error al reservar: " + error.message); } finally { setSaving(false); }
   };
@@ -358,14 +386,12 @@ export default function BookingHome() {
                  <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                     <button onClick={() => setStep(3)} className="text-xs text-gray-500 mb-6 hover:text-white flex items-center gap-1"><ChevronLeft size={14}/> Volver a horarios</button>
                     
-                    {/* RESUMEN DE RESERVA */}
                     <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5 space-y-4 mb-4">
                         <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">Tus Datos</h3>
                         <div><label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><User size={12}/> NOMBRE</label><input className="w-full bg-black border border-white/10 p-4 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Tu nombre" value={customerData.name} onChange={e => setCustomerData({...customerData, name: e.target.value})}/></div>
                         <div><label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><Phone size={12}/> WHATSAPP</label><input className="w-full bg-black border border-white/10 p-4 rounded-xl text-white outline-none focus:border-blue-500" placeholder="Ej: 264..." value={customerData.phone} onChange={e => setCustomerData({...customerData, phone: e.target.value})} type="tel"/></div>
                     </div>
                     
-                    {/* CUPONES */}
                     <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/5 mb-6">
                         {appliedCoupon ? (
                             <div className="flex justify-between items-center text-green-500"><span className="flex items-center gap-2 font-bold"><Tag size={16}/> Cupón {appliedCoupon.code} aplicado</span><button onClick={() => {setAppliedCoupon(null); setCouponCode('')}} className="text-xs text-red-400 hover:underline">Quitar</button></div>
@@ -374,7 +400,6 @@ export default function BookingHome() {
                         )}
                     </div>
 
-                    {/* 🟢 SELECCIÓN DE PAGO (NUEVO) */}
                     <div className="space-y-3 mb-6">
                         <h3 className="text-sm font-bold text-white uppercase tracking-widest">Forma de Pago</h3>
                         <div className="flex gap-3">
@@ -396,14 +421,12 @@ export default function BookingHome() {
                         </AnimatePresence>
                     </div>
 
-                    {/* RESUMEN FINAL */}
                     <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl mb-6 space-y-2">
                         <p className="text-center text-sm text-blue-200">Reserva: <strong>{new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-AR')}</strong> a las <strong>{selectedTime} hs</strong></p>
                         {selectedStaff && <p className="text-center text-xs text-blue-300 opacity-80">Con: <strong>{selectedStaff.name}</strong></p>}
                         <div className="border-t border-blue-500/20 mt-2 pt-2 flex justify-between items-center"><span className="text-gray-400 text-sm">Total:</span><div className="text-right">{appliedCoupon && <span className="text-xs text-gray-500 line-through block">${selectedService.price}</span>}<span className="text-xl font-bold text-white">${appliedCoupon ? selectedService.price * (1 - appliedCoupon.discount/100) : selectedService.price}</span></div></div>
                     </div>
 
-                    {/* BOTÓN CONFIRMAR */}
                     <button onClick={handleConfirmBooking} disabled={!customerData.name || !customerData.phone || saving} className={`w-full py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-2 transition-all ${(!customerData.name || !customerData.phone || saving) ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : paymentMethod === 'mercadopago' ? 'bg-[#009EE3] text-white hover:brightness-110 shadow-lg' : 'bg-green-500 text-black hover:bg-white shadow-lg shadow-green-500/20'}`}>
                         {saving ? <Loader2 className="animate-spin"/> : paymentMethod === 'mercadopago' ? 'Ir a Pagar' : <><CheckCircle size={20}/> Confirmar Turno</>}
                     </button>

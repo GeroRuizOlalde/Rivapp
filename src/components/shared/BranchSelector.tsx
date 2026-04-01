@@ -1,29 +1,24 @@
-import { useState, useEffect } from "react";
-import { MapPin, Navigation, ChevronRight, Store } from "lucide-react";
-// 👇 CORREGIDO: Ruta relativa
-import { getDistanceFromLatLonInKm } from "../../utils/geolocation"; 
+import React, { useState, useEffect } from 'react';
+import { MapPin, Navigation, ChevronRight, Store, Loader2 } from 'lucide-react';
 
-interface Branch {
-  id: string;
-  name: string;
-  address: string;
-  lat?: number;
-  lng?: number;
-}
+// 👇 HELPER: Calculadora de distancia (Integrada aquí para no crear más archivos)
+const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Radio de la tierra en km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
-interface BranchSelectorProps {
-  branches: Branch[]; // 👈 NUEVO: Recibimos los datos ya listos
-  onSelect: (branchId: string) => void;
-  className?: string;
-}
-
-export default function BranchSelector({ branches = [], onSelect, className = "" }: BranchSelectorProps) {
-  const [sortedBranches, setSortedBranches] = useState<Branch[]>(branches);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+export default function BranchSelector({ branches = [], onSelect }) {
+  const [sortedBranches, setSortedBranches] = useState(branches);
+  const [userLocation, setUserLocation] = useState(null);
   const [calculating, setCalculating] = useState(false);
 
-  // Efecto para actualizar la lista si llegan nuevas branches del padre
+  // Efecto para actualizar si llegan datos nuevos
   useEffect(() => {
     setSortedBranches(branches);
   }, [branches]);
@@ -36,11 +31,13 @@ export default function BranchSelector({ branches = [], onSelect, className = ""
       (position) => {
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lng: longitude });
-        setPermissionState('granted');
         
         // Ordenar: la más cercana primero
         const sorted = [...branches].sort((a, b) => {
-          if (!a.lat || !b.lat) return 0;
+          // Si una sucursal no tiene coordenadas, va al final
+          if (!a.lat || !a.lng) return 1;
+          if (!b.lat || !b.lng) return -1;
+
           const distA = getDistanceFromLatLonInKm(latitude, longitude, a.lat, a.lng);
           const distB = getDistanceFromLatLonInKm(latitude, longitude, b.lat, b.lng);
           return distA - distB;
@@ -50,86 +47,94 @@ export default function BranchSelector({ branches = [], onSelect, className = ""
         setCalculating(false);
       },
       (error) => {
-        console.error(error);
-        setPermissionState('denied');
+        console.error("Error GPS:", error);
         setCalculating(false);
       }
     );
   };
 
-  if (branches.length === 0) {
-    return <div className="p-4 text-center text-gray-500 animate-pulse">Cargando sucursales...</div>;
-  }
-
   return (
-    <div className={`w-full max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden ${className}`}>
-      <div className="p-5 bg-gray-50 border-b border-gray-100">
-        <h3 className="font-bold text-gray-800 flex items-center gap-2">
-          <Store className="w-5 h-5 text-indigo-600" />
-          Elige tu sucursal
-        </h3>
-        <p className="text-xs text-gray-500 mt-1">
-          Selecciona dónde quieres realizar tu pedido.
-        </p>
-      </div>
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-[#1a1a1a] rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+        
+        {/* Cabecera */}
+        <div className="p-6 border-b border-white/5 bg-[#0f0f0f]">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Store className="text-[#d0ff00]" />
+            Elige tu sucursal
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Selecciona el local más cercano para ver stock real.
+          </p>
+        </div>
 
-      <div className="p-4 space-y-3">
-        {/* Botón de Geolocalización */}
-        {permissionState !== 'denied' && !userLocation && (
-          <button
-            onClick={handleLocateMe}
-            disabled={calculating}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors border border-indigo-100 mb-4"
-          >
-            <Navigation className="w-4 h-4" />
-            {calculating ? "Calculando..." : "Ordenar por cercanía"}
-          </button>
-        )}
+        <div className="p-4 space-y-3">
+          {/* Botón GPS */}
+          {!userLocation && (
+            <button
+              onClick={handleLocateMe}
+              disabled={calculating}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white/5 text-[#d0ff00] font-bold text-sm rounded-xl hover:bg-white/10 transition-colors border border-[#d0ff00]/20 mb-2"
+            >
+              {calculating ? <Loader2 className="animate-spin" size={16}/> : <Navigation size={16} />}
+              {calculating ? "Calculando..." : "Ordenar por cercanía"}
+            </button>
+          )}
 
-        {/* Lista de Sucursales */}
-        <div className="flex flex-col gap-2">
-          {sortedBranches.map((branch, index) => {
-            const isNearest = index === 0 && userLocation !== null;
-            const distance = userLocation && branch.lat && branch.lng
-              ? getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, branch.lat, branch.lng).toFixed(1)
-              : null;
+          {/* Lista de Sucursales */}
+          <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            {sortedBranches.map((branch, index) => {
+              // Calculamos distancia solo para mostrarla
+              let distanceText = null;
+              let isNearest = false;
 
-            return (
-              <button
-                key={branch.id}
-                onClick={() => onSelect(branch.id)}
-                className={`group relative flex items-start text-left p-3 rounded-xl border transition-all hover:shadow-md
-                  ${isNearest 
-                    ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/30' 
-                    : 'border-gray-200 hover:border-indigo-300 bg-white'
-                  }`}
-              >
-                <div className="mr-3 mt-1 bg-gray-100 p-2 rounded-full group-hover:bg-indigo-100 transition-colors">
-                  <MapPin className={`w-5 h-5 ${isNearest ? 'text-indigo-600' : 'text-gray-500'}`} />
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-semibold text-gray-900">{branch.name}</h4>
-                    {distance && (
-                      <span className="text-xs font-bold bg-gray-900 text-white px-2 py-0.5 rounded-full">
-                        {distance} km
+              if (userLocation && branch.lat && branch.lng) {
+                const dist = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, branch.lat, branch.lng);
+                distanceText = dist < 1 ? `${(dist * 1000).toFixed(0)} m` : `${dist.toFixed(1)} km`;
+                isNearest = index === 0;
+              }
+
+              return (
+                <button
+                  key={branch.id}
+                  onClick={() => onSelect(branch)} // 👈 Importante: Pasamos el objeto completo
+                  className={`relative flex items-center text-left p-4 rounded-2xl border transition-all duration-300 group
+                    ${isNearest 
+                      ? 'bg-[#d0ff00]/10 border-[#d0ff00] ring-1 ring-[#d0ff00]/50' 
+                      : 'bg-[#0f0f0f] border-white/5 hover:border-white/20 hover:bg-[#252525]'
+                    }`}
+                >
+                  {/* Ícono */}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 transition-colors ${isNearest ? 'bg-[#d0ff00] text-black' : 'bg-white/10 text-gray-400 group-hover:bg-[#d0ff00] group-hover:text-black'}`}>
+                    <MapPin size={20} />
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <h4 className={`font-bold truncate pr-2 ${isNearest ? 'text-[#d0ff00]' : 'text-white'}`}>{branch.name}</h4>
+                      {distanceText && (
+                        <span className="text-[10px] font-bold bg-white/10 text-white px-2 py-1 rounded-md whitespace-nowrap">
+                          {distanceText}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{branch.address || "Dirección no disponible"}</p>
+                    
+                    {isNearest && (
+                      <span className="inline-block mt-2 text-[10px] font-black text-black bg-[#d0ff00] px-2 py-0.5 rounded uppercase tracking-wider">
+                        Recomendado
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{branch.address}</p>
-                  
-                  {isNearest && (
-                    <span className="inline-block mt-2 text-xs font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">
-                      ¡Más cercana!
-                    </span>
-                  )}
-                </div>
 
-                <ChevronRight className="w-5 h-5 text-gray-300 absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            );
-          })}
+                  {/* Flecha */}
+                  <ChevronRight className={`ml-2 w-5 h-5 transition-all ${isNearest ? 'text-[#d0ff00]' : 'text-gray-600 group-hover:text-white group-hover:translate-x-1'}`} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

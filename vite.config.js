@@ -1,40 +1,40 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['favicon.ico', 'pwa-192x192.png'],
       manifest: {
-        name: 'San Juan Delivery',
-        short_name: 'SJ Delivery',
-        description: 'La mejor comida de San Juan',
-        theme_color: '#ff6b00',
+        name: 'Rivapp',
+        short_name: 'Rivapp',
+        theme_color: '#d0ff00',
         background_color: '#0f0f0f',
-        display: 'standalone', // Esto oculta la barra de URL del navegador
-        orientation: 'portrait',
+        display: 'standalone',
         icons: [
-          {
-            src: 'pwa-192x192.png', // Tienes que crear esta imagen en public/
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png', // Tienes que crear esta imagen en public/
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' }
         ]
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      // manualChunks NO va aquí
+      output: {
+        // manualChunks SI va aquí adentro
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-db': ['@supabase/supabase-js'],
+          'vendor-charts': ['recharts', 'react-is'], // Agregamos react-is aquí también
+          'vendor-ui': ['framer-motion', 'lucide-react']
+        }
+      }
+    }
+  }
 });

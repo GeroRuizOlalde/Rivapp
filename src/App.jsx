@@ -1,26 +1,26 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from './supabase/client';
 import { StoreProvider } from './context/StoreContext';
 
-// --- PÁGINAS GLOBALES ---
-import Landing from './pages/Landing';
-import GlobalLogin from './pages/GlobalLogin';
-import Register from './pages/Register';
-import SuperAdmin from './pages/SuperAdmin';
-import UpdatePassword from './pages/UpdatePassword';
+// --- PÁGINAS GLOBALES (Carga Diferida / Code Splitting) ---
+const Landing = lazy(() => import('./pages/Landing'));
+const GlobalLogin = lazy(() => import('./pages/GlobalLogin'));
+const Register = lazy(() => import('./pages/Register'));
+const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
+const UpdatePassword = lazy(() => import('./pages/UpdatePassword'));
+const CreateStore = lazy(() => import('./pages/CreateStore'));
 
 // --- PÁGINAS DEL SAAS (TIENDAS) ---
-import StoreHome from './pages/StoreHome'; 
-import Tracking from './pages/Tracking';
-import Rider from './pages/Rider';
+const StoreHome = lazy(() => import('./pages/StoreHome')); 
+const Tracking = lazy(() => import('./pages/Tracking'));
+const Rider = lazy(() => import('./pages/Rider'));
 
 // --- ADMIN ---
-import Admin from './pages/Admin'; 
+const Admin = lazy(() => import('./pages/Admin')); 
 import SubscriptionGuard from './components/shared/SubscriptionGuard';
 
 // 🟢 LAYOUT ENVOLTORIO (StoreProvider)
-// Envuelve todas las rutas que dependen del SLUG del negocio (/:slug)
 const StoreLayout = () => {
   return (
     <StoreProvider>
@@ -28,6 +28,13 @@ const StoreLayout = () => {
     </StoreProvider>
   );
 };
+
+// Componente de carga simple para el Suspense
+const PageLoader = () => (
+  <div className="h-screen w-full flex items-center justify-center bg-black text-[#d0ff00] font-bold">
+    Cargando Rivapp...
+  </div>
+);
 
 function App() {
   const navigate = useNavigate();
@@ -48,44 +55,44 @@ function App() {
 
   return (
     <div className="app-container">
-      <Routes>
-        
-        {/* 1. RUTAS GLOBALES (Plataforma Rivapp) */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<GlobalLogin />} />
-        <Route path="/update-password" element={<UpdatePassword />} /> 
-        <Route path="/master-panel" element={<SuperAdmin />} />
-
-        {/* 2. RUTA DE TRACKING GLOBAL (Segura y Directa) */}
-        {/* URL: rivapp.com.ar/tracking/uuid-largo-seguro */}
-        <Route path="/tracking/:token" element={<Tracking />} />
-
-        {/* 3. RUTAS DE CLIENTES SAAS (rivapp.com.ar/nombre-local) */}
-        {/* Todo aquí dentro tiene acceso al contexto de la tienda */}
-        <Route path="/:slug" element={<StoreLayout />}>
+      {/* Suspense es el "paracaídas". Mientras el navegador descarga el pedacito de código 
+          de la página a la que vas, muestra el fallback.
+      */}
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
           
-          {/* Home del negocio (Menú o Servicios) */}
-          <Route index element={<StoreHome />} />
-          
-          {/* Panel de Administración (Protegido) */}
-          <Route path="admin" element={
-            <SubscriptionGuard>
-              <Admin />
-            </SubscriptionGuard>
-          } />
-          
-          {/* Vista para Repartidores */}
-          <Route path="rider" element={<Rider />} />
-          
-        </Route>
+          {/* 1. RUTAS GLOBALES */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<GlobalLogin />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/registro" element={<Register />} />
+          <Route path="/update-password" element={<UpdatePassword />} /> 
+          <Route path="/master-panel" element={<SuperAdmin />} />
 
-        {/* 4. FALLBACK (Cualquier ruta desconocida va al inicio) */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+          {/* 2. RUTA DE ONBOARDING */}
+          <Route path="/create-store" element={<CreateStore />} />
 
-        <Route path="/register" element={<Register />} />
-        <Route path="/registro" element={<Register />} />
+          {/* 3. RUTA DE TRACKING GLOBAL */}
+          <Route path="/tracking/:token" element={<Tracking />} />
 
-      </Routes>
+          {/* 4. RUTAS DE CLIENTES SAAS (Dinámicas /:slug) */}
+          <Route path="/:slug" element={<StoreLayout />}>
+            <Route index element={<StoreHome />} />
+            
+            <Route path="admin" element={
+              <SubscriptionGuard>
+                <Admin />
+              </SubscriptionGuard>
+            } />
+            
+            <Route path="rider" element={<Rider />} />
+          </Route>
+
+          {/* 5. FALLBACK */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+
+        </Routes>
+      </Suspense>
     </div>
   );
 }

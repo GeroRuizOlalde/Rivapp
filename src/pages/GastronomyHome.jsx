@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase/client';
 import { useStore } from '../context/StoreContext'; 
 import { useNavigate } from 'react-router-dom'; 
@@ -8,7 +8,7 @@ import { useMenuData } from "../hooks/useMenuData";
 import { useStoreStatus } from "../hooks/useStoreStatus";
 import { 
   Search, Loader2, Lock, X, Banknote, CreditCard, MapPin, 
-  Store, Copy, Check, Navigation, Ruler, Clock, AlertTriangle, 
+  Copy, Check, Navigation, Ruler, Clock, AlertTriangle, 
   ShoppingBag, Plus, Minus, ChevronRight, Phone, User, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -145,7 +145,7 @@ const ProductCard = ({ item, isOpen, onAdd, color }) => {
   return ( 
     <div className={`bg-[#1a1a1a] p-3 rounded-2xl border border-white/5 flex gap-4 transition-all hover:border-white/10 ${!isOpen || isOut ? 'opacity-50 grayscale' : ''}`}>
         <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-gray-800">
-            <img src={imageSrc} className="w-full h-full object-cover" />
+            <img src={imageSrc} className="w-full h-full object-cover" alt={item.name} />
         </div>
         <div className="flex-1 flex flex-col justify-between py-1">
             <div>
@@ -254,15 +254,20 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
   const [isSending, setIsSending] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const storeLoc = config?.lat ? { lat: config.lat, lng: config.lng } : DEFAULT_COORDS;
+  // Usamos la lat/lng de la SUCURSAL si existe, sino la del STORE, sino Default
+  const storeLoc = selectedBranch?.lat && selectedBranch?.lng 
+      ? { lat: selectedBranch.lat, lng: selectedBranch.lng }
+      : (config?.lat ? { lat: config.lat, lng: config.lng } : DEFAULT_COORDS);
+
   const brandColor = config?.color_accent || '#d0ff00';
 
   useEffect(() => { if (defaultOrderType) setDeliveryMode(defaultOrderType); }, [defaultOrderType, isOpen]);
 
   useEffect(() => {
-      if(exactLocation) {
+      if(exactLocation && storeLoc) {
           const dist = calculateDistance(storeLoc.lat, storeLoc.lng, exactLocation.lat, exactLocation.lng);
           setDistanceKm(dist.toFixed(1)); 
+          // Precio base + Precio por KM (ajustable por tienda en el futuro)
           const cost = Math.ceil(PRECIO_BASE + (dist * PRECIO_POR_KM));
           setDeliveryCost(cost);
       }
@@ -295,10 +300,10 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
         : '';
     
     try {
-      // 1. Insertar pedido (Igual que antes)
+      // 1. Insertar pedido con branch_id
       const { data, error } = await supabase.from('orders').insert([{ 
           store_id: config.id,
-          branch_id: selectedBranch?.id,
+          branch_id: selectedBranch ? selectedBranch.id : null, // 🟢 IMPORTANTE: ID de Sucursal
           customer_name: customerName, 
           customer_phone: customerPhone, 
           items: cart, 
@@ -318,7 +323,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
       if(error) throw error;
       const newOrder = data[0];
 
-      // 2. Stock (Igual que antes)
+      // 2. Stock (Decrementamos usando la RPC segura)
       for (const item of cart) {
           const { error: stockError } = await supabase.rpc('decrement_stock', { 
               p_product_id: item.id, 
@@ -332,7 +337,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
           onSuccess(newOrder); 
       }
 
-      // 3. Mercado Pago (Igual que antes)
+      // 3. Mercado Pago
       if (paymentMethod === 'mercadopago') {
             const { data: mpData, error: mpError } = await supabase.functions.invoke('create-order-preference', {
                 body: JSON.stringify({
@@ -353,14 +358,14 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
             }
       }
 
-      // 🟢 4. WHATSAPP CORREGIDO (Codificación y Formato)
-      const adminPhone = config?.phone || "5492646620024"; 
+      // 🟢 4. WHATSAPP (Usamos el teléfono de la sucursal si existe, sino el de la tienda)
+      const adminPhone = (selectedBranch?.phone || config?.phone || "549264000000").replace(/\D/g, '');
       
       const trackingToken = newOrder.tracking_token || newOrder.id;
       const trackingLink = `${window.location.origin}/tracking/${trackingToken}`;
 
-      // Construimos el mensaje usando \n para los saltos de línea
       let msg = `👋 *¡HOLA! QUIERO HACER UN PEDIDO* 🍽️\n`;
+      if (selectedBranch) msg += `📍 *Sucursal:* ${selectedBranch.name}\n`;
       msg += `🆔 *ID:* #${newOrder.id}\n\n`;
 
       msg += `👤 *Cliente:* ${customerName}\n`;
@@ -392,11 +397,9 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
       msg += `\n🔗 *Seguimiento:* ${trackingLink}\n`;
       msg += `\n🚀 _Pedido generado desde la Web_`;
 
-      // 🟢 LIMPIEZA
       clearCart(); 
       onClose(); 
 
-      // 🟢 CORRECCIÓN CLAVE: Usar api.whatsapp.com y encodeURIComponent
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${adminPhone}&text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, '_blank'); 
 
@@ -533,12 +536,11 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
   );
 };
 
-// 🟢 STATUS TRACKER (ACTUALIZADO: Evita solapamiento)
+// 🟢 STATUS TRACKER
 const StatusTracker = ({ order, onClose }) => {
   const navigate = useNavigate();
   const { cart } = useCartStore(); // Leemos el estado del carrito
   
-  // Clase dinámica: Si hay items, subimos (bottom-24), si no, abajo (bottom-4)
   const positionClass = cart.length > 0 ? "bottom-24" : "bottom-4";
 
   if (!order) return null;
@@ -581,7 +583,9 @@ export default function GastronomyHome() {
   const { store: config, loading: loadingConfig, selectedBranch } = useStore();
   const safeConfig = config || { store_name: "Cargando...", color_accent: "#ff6b00", logo_url: "", banner_url: "" };
 
-  const { menuItems, categories, loading } = useMenuData();
+  // Ahora useMenuData recibe la branch para (en un futuro) filtrar stock por sucursal
+  const { menuItems, categories, loading } = useMenuData(config?.id, selectedBranch?.id);
+  
   const { isOpen, loading: statusLoading } = useStoreStatus();
   const { clearCart } = useCartStore();
   
@@ -788,6 +792,7 @@ export default function GastronomyHome() {
                 </div>
 
                 <div className="sticky top-0 z-30 bg-[#0f0f0f]/95 backdrop-blur-md py-4 px-4 border-b border-white/5 mb-6 flex gap-2 overflow-x-auto no-scrollbar">
+                    <CategoryPill label="Todos" active={activeCategory==="Todos"} onClick={()=>setActiveCategory("Todos")} color={safeConfig.color_accent} />
                     {categories.map(cat => <CategoryPill key={cat} label={cat} active={activeCategory===cat} onClick={()=>setActiveCategory(cat)} color={safeConfig.color_accent}/>)}
                 </div>
                 
