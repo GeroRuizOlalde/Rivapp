@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { logger } from '../utils/logger';
 
 export const useCartStore = create(
   persist(
@@ -13,7 +14,7 @@ export const useCartStore = create(
         if (state.cart.length > 0 && state.cartBranchId !== branchId) {
             // Aquí podríamos retornar un error, pero por ahora simplemente 
             // NO agregamos el item para evitar mezclar pedidos.
-            console.warn("Conflicto de sucursales: El carrito tiene items de otra sucursal");
+            logger.warn('Conflicto de sucursales: el carrito tiene items de otra sucursal');
             // Retornamos el estado tal cual está (no hacemos nada)
             // Tip: En el futuro aquí activaremos un popup: "¿Quieres vaciar el carrito?"
             return state; 

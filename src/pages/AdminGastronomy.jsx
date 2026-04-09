@@ -7,6 +7,7 @@ import AdminBranchSelector from '../components/admin/AdminBranchSelector';
 import NotificationPanel from '../components/admin/NotificationPanel';
 import NotificationToast from '../components/admin/NotificationToast';
 import { useNotifications, NOTIFICATION_TAB_MAP } from '../hooks/useNotifications';
+import { logger } from '../utils/logger';
 
 // --- ICONOS (LUCIDE REACT) ---
 import {
@@ -323,7 +324,7 @@ export default function AdminGastronomy() {
       audioRef.current.play().then(() => {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
-      }).catch(e => console.log("Audio permission pending", e));
+      }).catch((e) => logger.debug('Audio permission pending', e));
     }
   }, [isSoundEnabled]);
 

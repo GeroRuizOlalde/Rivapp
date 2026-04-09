@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(wc -l /c/Users/geror.GERO/OneDrive/Documentos/GitHub/pedidodelivery/src/pages/*.jsx)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(wc -l src/pages/*.jsx src/pages/*.tsx)"
     ]
   }
 }

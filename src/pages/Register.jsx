@@ -6,6 +6,7 @@ import {
   AlertTriangle, Utensils, Scissors, Globe 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { appConfig } from '../config/appConfig';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -184,7 +185,7 @@ export default function Register() {
               {form.slug && (
                 <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-500 bg-white/5 p-2 rounded-lg">
                   <Globe size={12}/>
-                  <span>rivapp.com.ar/<strong>{form.slug}</strong></span>
+                  <span>{appConfig.appDomainLabel}/<strong>{form.slug}</strong></span>
                 </div>
               )}
             </div>

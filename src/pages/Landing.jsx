@@ -5,10 +5,10 @@ import {
   LayoutDashboard, MapPin, MessageCircle, Package, Percent,
   Rocket, Scissors, ShieldCheck, Utensils, Menu, X
 } from 'lucide-react';
+import { appConfig, getWhatsAppUrl } from '../config/appConfig';
 
 // --- CONFIG ---
 const DEFAULT_TRIAL_DAYS = 14;
-const WA_PHONE = '5492646620024';
 
 const trustItems = [
   { icon: MapPin, title: 'Hecho para negocio local', text: 'Rivapp esta pensado para la realidad diaria de un negocio local en Argentina, no para una empresa abstracta.' },
@@ -112,7 +112,7 @@ function HeroDashboardPreview() {
             <div className="h-3 w-3 rounded-full bg-yellow-500/50" />
             <div className="h-3 w-3 rounded-full bg-green-500/50" />
           </div>
-          <div className="mx-auto flex h-5 w-2/3 items-center rounded-md bg-[#1f1f1f] px-4 text-[8px] font-mono text-gray-600">rivapp.com.ar/admin</div>
+          <div className="mx-auto flex h-5 w-2/3 items-center rounded-md bg-[#1f1f1f] px-4 text-[8px] font-mono text-gray-600">{appConfig.appDomainLabel}/admin</div>
         </div>
 
         <div className="flex min-h-[420px]">
@@ -207,8 +207,8 @@ function DemoCard({ title, subtitle, href, signupHref, icon: Icon, tone, descrip
 }
 
 function PriceCard({ title, subtitle, price, features, recommended }) {
-  const waMessage = encodeURIComponent(`Hola, estoy interesado en el plan ${title} de Rivapp`);
   const priceLabel = typeof price === 'number' ? `$${price.toLocaleString('es-AR')}` : price;
+  const contactUrl = getWhatsAppUrl(appConfig.supportWhatsApp, `Hola, estoy interesado en el plan ${title} de Rivapp`);
 
   return (
     <div className={`rounded-[2.5rem] p-[2px] ${recommended ? 'bg-gradient-to-b from-[#d0ff00] via-[#009EE3] to-[#d0ff00] shadow-[0_0_30px_-10px_rgba(0,158,227,0.4)]' : 'bg-white/10'}`}>
@@ -233,7 +233,7 @@ function PriceCard({ title, subtitle, price, features, recommended }) {
         </ul>
 
         <a
-          href={`https://wa.me/${WA_PHONE}?text=${waMessage}`}
+          href={contactUrl || '/register'}
           target="_blank"
           rel="noopener noreferrer"
           className={`mt-10 inline-flex items-center justify-center gap-3 rounded-2xl py-4 text-lg font-bold transition ${recommended ? 'bg-[#d0ff00] text-black hover:bg-[#e1ff55]' : 'bg-white/10 text-white hover:bg-white/20'}`}
@@ -429,7 +429,7 @@ export default function Landing() {
 
       {/* WhatsApp FAB */}
       <a
-        href={`https://wa.me/${WA_PHONE}?text=${encodeURIComponent('Hola, vi la web de Rivapp y tengo una consulta.')}`}
+        href={getWhatsAppUrl(appConfig.supportWhatsApp, 'Hola, vi la web de Rivapp y tengo una consulta.') || '/register'}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-3 md:p-4 rounded-full shadow-[0_0_20px_rgba(37,211,102,0.4)] flex items-center gap-2 font-bold hover:bg-[#20bd5a] transition-colors"

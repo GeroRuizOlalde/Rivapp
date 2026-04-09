@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Store, Utensils, Scissors, Globe, ArrowRight, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { appConfig } from '../config/appConfig';
 
 export default function CreateStore() {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ export default function CreateStore() {
           {form.slug && (
             <div className="flex items-center gap-2 bg-[#1a1a1a] border border-white/5 rounded-xl px-4 py-3">
               <Globe size={16} className="text-gray-500 shrink-0" />
-              <span className="text-gray-500 text-sm">rivapp.com.ar/</span>
+              <span className="text-gray-500 text-sm">{appConfig.appDomainLabel}/</span>
               <span className="text-[#d0ff00] text-sm font-bold">{form.slug}</span>
             </div>
           )}

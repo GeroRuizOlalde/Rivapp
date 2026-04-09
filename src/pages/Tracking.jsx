@@ -6,6 +6,7 @@ import {
   Send, ThumbsUp, Package, Bike, AlertTriangle, Loader2, CheckCircle, PartyPopper
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { appConfig, getWhatsAppUrl } from '../config/appConfig';
 
 // Componente de Estrellas
 const StarRating = ({ rating, setRating, color }) => ( 
@@ -142,9 +143,10 @@ export default function Tracking() {
 
   const contactSupport = () => {
       const msg = `Hola, consulto por mi pedido #${order.id}`;
-      const phone = storeData.phone || '5492646620024'; 
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
-      window.open(whatsappUrl, '_blank');
+      const whatsappUrl = getWhatsAppUrl(storeData.phone || appConfig.supportWhatsApp, msg);
+      if (whatsappUrl) {
+        window.open(whatsappUrl, '_blank');
+      }
   };
 
   if (loading) return ( 

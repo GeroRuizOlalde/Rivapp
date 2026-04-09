@@ -1,12 +1,13 @@
 -- ============================================================
 -- FIX: Asignar tiendas demo a tu usuario + actualizar RLS
 -- Ejecutar en Supabase SQL Editor (una sola vez)
+-- Reemplaza el email placeholder antes de correrlo.
 -- ============================================================
 
 -- 1. ASIGNAR TIENDAS DEMO A TU USUARIO
 UPDATE stores
-SET owner_id = (SELECT id FROM auth.users WHERE email = 'geroruizolalde13@gmail.com' LIMIT 1),
-    owner_email = 'geroruizolalde13@gmail.com'
+SET owner_id = (SELECT id FROM auth.users WHERE email = 'tu-email@dominio.com' LIMIT 1),
+    owner_email = 'tu-email@dominio.com'
 WHERE slug IN ('demo', 'demo-turnos');
 
 -- 2. CREAR FUNCION HELPER PARA POLITICAS RLS

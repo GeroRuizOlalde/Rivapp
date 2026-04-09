@@ -692,7 +692,7 @@ export default function GastronomyHome() {
           setExtrasItem({ ...item, finalPrice: item.price }); 
       } else { 
           // 🟢 2. PASAMOS selectedBranch?.id AL AGREGAR
-          addItem({ ...item, finalPrice: item.price, uniqueId: Date.now() }, selectedBranch?.id); 
+          addItem({ ...item, finalPrice: item.price, uniqueId: `${item.id}:base:no-extras` }, selectedBranch?.id); 
           showToast(`¡${item.name} agregado! 🛒`); 
       } 
   };
@@ -704,7 +704,7 @@ export default function GastronomyHome() {
           setExtrasItem(itemWithVariant); 
       } else { 
           // 🟢 3. PASAMOS selectedBranch?.id
-          addItem({ ...itemWithVariant, uniqueId: Date.now() }, selectedBranch?.id); 
+          addItem({ ...itemWithVariant, uniqueId: `${item.id}:${variant.name}:no-extras` }, selectedBranch?.id); 
           showToast(`¡${item.name} agregado! 🛒`); 
       } 
   };
@@ -718,7 +718,7 @@ export default function GastronomyHome() {
       // 🟢 4. PASAMOS selectedBranch?.id
       addItem({ 
           ...item, 
-          uniqueId: Date.now(), 
+          uniqueId: `${item.id}:${item.variantName || 'base'}:${extrasNames || 'no-extras'}`, 
           finalPrice: base + extrasPrice, 
           extrasNames, 
           extrasPrice 

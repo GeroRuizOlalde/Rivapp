@@ -10,8 +10,7 @@ import {
   Bell, ListChecks, Smartphone, BarChart3, Briefcase, Lock, Save, Loader2
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-
-const MASTER_EMAIL = "geroruizolalde13@gmail.com";
+import { isPlatformAdmin } from '../utils/platformAdmin';
 
 export default function SuperAdmin() {
   const navigate = useNavigate(); 
@@ -47,7 +46,7 @@ export default function SuperAdmin() {
   useEffect(() => {
     const checkAdminAccess = async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session || session.user.email !== MASTER_EMAIL) { navigate('/login'); return; }
+        if (!session || !isPlatformAdmin(session.user)) { navigate('/login'); return; }
         setAuthorized(true); 
         fetchAllData(); 
     };
@@ -108,7 +107,7 @@ export default function SuperAdmin() {
             if (funcError) throw new Error("Error creando usuario: " + funcError.message);
             newOwnerId = funcData?.user_id;
         } else {
-            console.log("⚠️ Sin email: Creando tienda DEMO (Huérfana)");
+            console.debug("Sin email: creando tienda demo huerfana");
             isDemoFinal = true; 
         }
 
