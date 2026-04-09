@@ -28,6 +28,12 @@ serve(async (req) => {
     const type = body.type || requestUrl.searchParams.get('type') || body.topic
     const paymentId = body.data?.id || requestUrl.searchParams.get('data.id') || body.id
 
+    // Validar que venga store_id (obligatorio para scoping multi-tenant)
+    if (!store_id) {
+       console.error("❌ Webhook sin store_id - rechazado")
+       return new Response('Missing store_id', { status: 400 })
+    }
+
     // Solo nos interesa si es una notificación de pago
     if (type !== 'payment' || !paymentId) {
        return new Response('OK', { status: 200 })
@@ -74,11 +80,12 @@ serve(async (req) => {
 
         console.log(`✅ Pago Aprobado! ID Ref: ${orderId}, Monto: ${amount}`)
 
-        // A. Intentamos actualizar GASTRONOMÍA (orders)
+        // A. Intentamos actualizar GASTRONOMÍA (orders) - scoped por store_id
         const { error: orderError, data: orderData } = await supabaseAdmin
             .from('orders')
             .update({ status: 'confirmado', payment_status: 'paid', payment_id: paymentId })
             .eq('id', orderId)
+            .eq('store_id', store_id)
             .select()
 
         // B. Si no era una orden, intentamos actualizar TURNOS (appointments)
@@ -87,8 +94,10 @@ serve(async (req) => {
                 .from('appointments')
                 .update({ status: 'confirmado', payment_method: 'mercadopago', payment_id: paymentId })
                 .eq('id', orderId)
-            
+                .eq('store_id', store_id)
+
              if (!aptError) console.log("✂️ Turno actualizado correctamente")
+             else console.error("❌ Turno no encontrado o no pertenece a la tienda:", aptError.message)
         } else {
              console.log("🍔 Pedido actualizado correctamente")
         }

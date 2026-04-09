@@ -111,7 +111,7 @@ export default function Rider() {
 
   const markAsDelivered = async (id) => {
     if (!window.confirm("¿Confirmas la entrega?")) return;
-    const { error } = await supabase.from('orders').update({ status: 'entregado' }).eq('id', id);
+    const { error } = await supabase.from('orders').update({ status: 'entregado' }).eq('id', id).eq('store_id', store.id);
     if (!error && riderInfo) fetchDeliveries(riderInfo.id); 
   };
 

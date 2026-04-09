@@ -714,7 +714,7 @@ export default function GastronomyHome() {
       const checkActiveOrder = async () => { 
           const orderId = localStorage.getItem('activeOrderId'); 
           if (orderId) { 
-              const { data } = await supabase.from('orders').select('*').eq('id', orderId).single(); 
+              const { data } = await supabase.from('orders').select('*').eq('id', orderId).eq('store_id', config.id).single();
               if (data && data.status !== 'archivado') { 
                   setActiveOrder(data); 
               } else { 
