@@ -3,7 +3,13 @@
     "allow": [
       "Bash(wc -l /c/Users/geror.GERO/OneDrive/Documentos/GitHub/pedidodelivery/src/pages/*.jsx)",
       "Bash(npx vite:*)",
-      "Bash(wc -l src/pages/*.jsx src/pages/*.tsx)"
+      "Bash(wc -l src/pages/*.jsx src/pages/*.tsx)",
+      "Bash(supabase --version)",
+      "Bash(npm install:*)",
+      "Bash(npx supabase:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_39970c8688450f7d7d6c3044cca9f629f2b90e17 npx supabase link --project-ref jgtqmauqdubuoynsowtu)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_39970c8688450f7d7d6c3044cca9f629f2b90e17 npx supabase functions deploy create-store-owner)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_39970c8688450f7d7d6c3044cca9f629f2b90e17 npx supabase functions deploy create-store-owner --no-verify-jwt)"
     ]
   }
 }

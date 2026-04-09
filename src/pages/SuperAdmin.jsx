@@ -94,6 +94,13 @@ export default function SuperAdmin() {
 
         // 2. ¿Tiene email? -> Intentamos crear el usuario dueño
         if (newStoreData.owner_email && newStoreData.owner_email.trim() !== "") {
+            // Refrescar sesión para asegurar JWT válido
+            const { error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) {
+                logger.error("Error refrescando sesión:", refreshError);
+                throw new Error("Sesión expirada. Volvé a iniciar sesión.");
+            }
+
             const { data: funcData, error: funcError } = await supabase.functions.invoke('create-store-owner', {
                 body: {
                     email: newStoreData.owner_email,
