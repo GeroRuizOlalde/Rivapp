@@ -29,8 +29,12 @@ import {
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { ALL_TABS, BELL_SOUND } from './admin-gastronomy/constants';
-import { KanbanColumn, OrderCard } from './admin-gastronomy/components';
 import { getContrastText, printZTicket } from './admin-gastronomy/utils';
+import OrdersTab from './admin-gastronomy/OrdersTab';
+import TeamTab from './admin-gastronomy/TeamTab';
+import MenuTab from './admin-gastronomy/MenuTab';
+import BillingTab from './admin-gastronomy/BillingTab';
+import ConfigTab from './admin-gastronomy/ConfigTab';
 
 
 export default function AdminGastronomy() {
@@ -306,6 +310,18 @@ export default function AdminGastronomy() {
   }, [historyOrders, viewBranchId]);
 
   const getBranchName = (id) => branches.find(b => b.id === id)?.name || null;
+  const handleOpenAssignRider = (order) => {
+    setSelectedOrderForRider(order);
+    setShowAssignRiderModal(true);
+  };
+  const handleOpenRolesModal = () => setShowRolesModal(true);
+  const handleOpenTeamModal = () => setShowTeamModal(true);
+  const handleOpenPriceModal = () => setShowPriceModal(true);
+  const handleOpenCreateProductModal = () => setShowCreateModal(true);
+  const handleOpenPromoModal = (item) => { setPromoTargetItem(item); setShowPromoModal(true); };
+  const handleOpenEditProductModal = (item) => { setEditingProduct(item); setShowEditProductModal(true); };
+  const handleOpenNewBranchModal = () => { setEditingBranch(null); setBranchForm({ name: '', address: '', phone: '', lat: '', lng: '' }); setShowBranchModal(true); };
+  const handleOpenEditBranchModal = (branch) => { setEditingBranch(branch); setBranchForm(branch); setShowBranchModal(true); };
 
   useEffect(() => {
      if (viewBranchId) {
@@ -662,93 +678,42 @@ export default function AdminGastronomy() {
         )}
 
         {activeTab === 'orders' && (
-          <div className="h-full flex flex-col animate-in fade-in">
-            <header className="flex justify-between items-center mb-6">
-              <h1 className="text-3xl font-bold flex items-center gap-3">Cocina <span className="text-sm bg-[#1a1a1a] px-3 py-1 rounded-full text-gray-400 font-normal">{filteredOrders.length} pedidos</span></h1>
-              <div className="flex gap-2">
-                <button onClick={toggleSound} className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${isSoundEnabled ? 'bg-green-500/20 text-green-500 border-green-500/20' : 'bg-red-500/20 text-red-500 border-red-500/20'}`}>{isSoundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />} {isSoundEnabled ? "Sonido ON" : "Activar Sonido"}</button>
-                <button onClick={() => fetchOrders()} className="p-2 bg-[#1a1a1a] rounded-xl border border-white/10 hover:bg-white/5"><RefreshCw size={20} /></button>
-              </div>
-            </header>
-            <div className="flex-1 flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory">
-              <KanbanColumn title="ENVIADO" count={filteredOrders.filter(o => o.status === 'pendiente').length}>{filteredOrders.filter(o => o.status === 'pendiente').map(o => <OrderCard key={o.id} order={o} onStatusChange={updateOrderStatus} onReject={handleRejectOrder} onPrint={handlePrintOrder} onMarkPaid={handleMarkAsPaid} branchName={getBranchName(o.branch_id)} />)}</KanbanColumn>
-              <KanbanColumn title="CONFIRMADO" count={filteredOrders.filter(o => o.status === 'confirmado').length}>{filteredOrders.filter(o => o.status === 'confirmado').map(o => <OrderCard key={o.id} order={o} onStatusChange={updateOrderStatus} onPrint={handlePrintOrder} onMarkPaid={handleMarkAsPaid} branchName={getBranchName(o.branch_id)} />)}</KanbanColumn>
-              <KanbanColumn title="LISTO" count={filteredOrders.filter(o => o.status === 'listo').length}>{filteredOrders.filter(o => o.status === 'listo').map(o => (<OrderCard key={o.id} order={o} onStatusChange={updateOrderStatus} onPrint={handlePrintOrder} onAssignRider={() => { setSelectedOrderForRider(o); setShowAssignRiderModal(true); }} onMarkPaid={handleMarkAsPaid} branchName={getBranchName(o.branch_id)} />))}</KanbanColumn>
-              <KanbanColumn title="ENTREGADO" count={filteredOrders.filter(o => o.status === 'entregado').length}>{filteredOrders.filter(o => o.status === 'entregado').map(o => <OrderCard key={o.id} order={o} onStatusChange={updateOrderStatus} onPrint={handlePrintOrder} isFinished onMarkPaid={handleMarkAsPaid} branchName={getBranchName(o.branch_id)} />)}</KanbanColumn>
-            </div>
-          </div>
+          <OrdersTab
+            filteredOrders={filteredOrders}
+            isSoundEnabled={isSoundEnabled}
+            onToggleSound={toggleSound}
+            onRefreshOrders={fetchOrders}
+            onUpdateOrderStatus={updateOrderStatus}
+            onRejectOrder={handleRejectOrder}
+            onPrintOrder={handlePrintOrder}
+            onMarkOrderPaid={handleMarkAsPaid}
+            onOpenAssignRider={handleOpenAssignRider}
+            getBranchName={getBranchName}
+          />
         )}
 
-        {/* 🟢 NUEVO TAB: EQUIPO (GESTIÓN DE ROLES) */}
         {activeTab === 'team' && (
-          <div className="animate-in fade-in">
-            <header className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold flex items-center gap-2"><Users className="text-[#d0ff00]" /> Equipo</h1>
-              <div className="flex gap-2">
-                {/* 🔵 BOTÓN DE INFORMACIÓN DE ROLES */}
-                <button 
-                  onClick={() => setShowRolesModal(true)} 
-                  className="p-3 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                  title="Ver explicación de roles"
-                >
-                  <Info size={20} />
-                </button>
-
-                <button onClick={() => setShowTeamModal(true)} className="px-6 py-3 rounded-xl font-bold flex items-center gap-2 text-black shadow-lg hover:scale-105 transition-transform" style={{ backgroundColor: '#d0ff00' }}>
-                  <Plus size={18} /> Invitar Miembro
-                </button>
-              </div>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {teamInvites.map(invite => (
-                <div key={invite.id} className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 bg-white/5 px-3 py-1 rounded-bl-xl text-[10px] uppercase font-bold text-gray-400">
-                    {invite.status}
-                  </div>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-[#222] flex items-center justify-center text-gray-400">
-                      <User size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-white text-lg truncate w-40">{invite.email}</h3>
-                      <p className="text-xs text-gray-500 uppercase font-bold tracking-widest">{invite.role}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-black/30 p-3 rounded-xl border border-white/5 mb-4">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500">Sucursal Asignada:</span>
-                      <span className="font-bold text-[#d0ff00]">
-                        {invite.branch_id ? getBranchName(invite.branch_id) : '👑 Global (Todas)'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button onClick={() => handleDeleteInvite(invite.id)} className="w-full py-3 rounded-xl border border-red-500/20 text-red-500 font-bold hover:bg-red-500 hover:text-white transition-all text-xs flex items-center justify-center gap-2">
-                    <Trash2 size={14} /> Revocar Acceso
-                  </button>
-                </div>
-              ))}
-              
-              {teamInvites.length === 0 && (
-                <div className="col-span-full text-center py-20 bg-[#1a1a1a] rounded-3xl border border-dashed border-white/10">
-                  <Users size={48} className="mx-auto text-gray-600 mb-4" />
-                  <p className="text-gray-400 font-bold">No hay invitaciones pendientes.</p>
-                  <p className="text-gray-600 text-sm">Invita a tus gerentes o empleados para que gestionen sus sucursales.</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <TeamTab
+            teamInvites={teamInvites}
+            onOpenRolesModal={handleOpenRolesModal}
+            onOpenInviteModal={handleOpenTeamModal}
+            getBranchName={getBranchName}
+            onDeleteInvite={handleDeleteInvite}
+          />
         )}
 
-        {/* ... Resto de Tabs (Menu, CRM, etc.) se mantienen igual ... */}
         {activeTab === 'menu' && (
-          <div className="animate-in fade-in">
-            <header className="flex justify-between items-center mb-8"><h1 className="text-3xl font-bold">Gestión del Menú</h1><div className="flex gap-2"><button onClick={() => setShowPriceModal(true)} className="px-4 py-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20 hover:bg-blue-500/20 font-bold flex items-center gap-2"><TrendingUp size={16} /> Precios</button><button onClick={() => setShowCreateModal(true)} className="px-6 py-2 rounded-xl font-bold flex items-center gap-2 text-black" style={{ backgroundColor: '#d0ff00' }}><Plus size={18} /> Nuevo</button></div></header>
-            <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar"><button onClick={() => setSelectedCategory("Todos")} className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${selectedCategory === "Todos" ? "bg-white text-black" : "bg-[#1a1a1a] text-gray-400 border border-white/10 hover:bg-white/10"}`}>Todas</button>{Array.from(new Set(menuItems.map(item => item.category))).filter(Boolean).map(cat => (<button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${selectedCategory === cat ? "bg-white text-black" : "bg-[#1a1a1a] text-gray-400 border border-white/10 hover:bg-white/10"}`}>{cat}</button>))}</div>
-            <div className="flex flex-col gap-2">{menuItems.filter(i => selectedCategory === "Todos" ? true : i.category === selectedCategory).map(item => (<div key={item.id} className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all"><div className="flex items-center gap-4 overflow-hidden"><img src={item.image || "https://placehold.co/100"} className="w-12 h-12 rounded-lg object-cover bg-black/40 shrink-0" /><div className="min-w-0"><h3 className="font-bold text-white text-sm truncate">{item.name}</h3><span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{item.category}</span></div></div><div className="flex items-center gap-3 shrink-0"><button onClick={() => { setPromoTargetItem(item); setShowPromoModal(true); }} className="w-8 h-8 flex items-center justify-center rounded-lg bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500 hover:text-black transition-all" title="Crear Promoción"><Zap size={16} /></button><div className="bg-black/30 px-3 py-1 rounded-lg border border-white/5 font-mono text-sm font-bold w-20 text-center">${item.price}</div><button onClick={() => updateProductField(item.id, 'available', !item.available)} className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${item.available ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>{item.available ? <CheckCircle size={16} /> : <XCircle size={16} />}</button><button onClick={() => { setEditingProduct(item); setShowEditProductModal(true) }} className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"><Edit size={16} /></button><button onClick={() => deleteProduct(item.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={16} /></button></div></div>))}</div>
-          </div>
+          <MenuTab
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            menuItems={menuItems}
+            onOpenPriceModal={handleOpenPriceModal}
+            onOpenCreateProductModal={handleOpenCreateProductModal}
+            onOpenPromoModal={handleOpenPromoModal}
+            onToggleAvailability={updateProductField}
+            onOpenEditProductModal={handleOpenEditProductModal}
+            onDeleteProduct={deleteProduct}
+          />
         )}
 
         {activeTab === 'crm' && (
@@ -803,132 +768,34 @@ export default function AdminGastronomy() {
           </div>
         )}
 
-        {/* ... Tab Billing & Config ... */}
         {activeTab === 'billing' && (
-          <div className="animate-in fade-in max-w-4xl">
-            <header className="mb-8"><h1 className="text-3xl font-bold">Suscripción Rivapp</h1></header>
-            {(config.plan_type === 'pro' || config.plan_type === 'profesional' || config.subscription_status === 'active' || config.is_demo) ? (
-              <div className="bg-gradient-to-br from-blue-900/40 to-[#111] p-8 rounded-3xl border border-blue-500/50 relative overflow-hidden"><div className="relative z-10 flex justify-between items-center"><div><div className="flex items-center gap-3 mb-2"><h3 className="text-blue-400 text-sm font-bold uppercase tracking-widest">TU PLAN ACTUAL</h3><span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1"><Crown size={10} /> PRO</span></div><h2 className="text-5xl font-bold text-white mb-2">Profesional</h2></div><div className="text-right hidden md:block"><div className="text-3xl font-bold text-white">$40.000</div><div className="text-sm text-gray-500">/ mes</div></div></div></div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div className="bg-[#111] p-8 rounded-3xl border border-white/10"><h3 className="text-gray-400 text-sm font-bold uppercase mb-2">TU PLAN ACTUAL</h3><h2 className="text-4xl font-bold text-white mb-6">Plan Emprendedor</h2><ul className="space-y-3 mb-8 text-gray-400 text-sm"><li className="flex items-center gap-2"><Check size={16} /> Menú Digital & Pedidos</li><li className="flex items-center gap-2"><Check size={16} /> Gestión Básica</li></ul></div><div className="p-1 rounded-3xl shadow-2xl" style={{ background: `linear-gradient(to bottom right, ${accentColor}, #0a0a0a)` }}><div className="bg-[#0f0f0f] h-full w-full rounded-[22px] p-8"><h3 className="text-sm font-bold uppercase mb-2" style={{ color: accentColor }}>PLAN PRO</h3><div className="flex items-end gap-2 mb-6"><h2 className="text-5xl font-bold text-white">$40.000</h2></div><button onClick={handleSubscribe} className="w-full py-4 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2" style={{ backgroundColor: accentColor }}>Pasarme a PRO <ChevronRight size={18} /></button></div></div></div>
-            )}
-          </div>
+          <BillingTab
+            config={config}
+            accentColor={accentColor}
+            onSubscribe={handleSubscribe}
+          />
         )}
 
         {activeTab === 'config' && (
-          <div className="space-y-6 animate-in fade-in max-w-2xl">
-            {!viewBranchId ? (
-              // 👑 MODO DUEÑO (CONFIGURACIÓN GLOBAL)
-              <>
-                <h1 className="text-3xl font-bold flex items-center gap-2"><Globe className="text-[#d0ff00]" /> Configuración Global</h1>
-                <p className="text-gray-400 text-sm">Gestiona la marca, pagos y crea nuevas sucursales.</p>
-
-                {/* Panel de Sucursales */}
-                <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/10">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-white font-bold text-lg flex items-center gap-2"><MapPin className="text-[#d0ff00]" /> Mis Sucursales</h3>
-                    <button onClick={() => { setEditingBranch(null); setBranchForm({ name: '', address: '', phone: '', lat: '', lng: '' }); setShowBranchModal(true); }} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all"><Plus size={16} /> Nueva Sucursal</button>
-                  </div>
-                  <div className="space-y-3">
-                    {branches.map(branch => (
-                      <div key={branch.id} className={`p-4 rounded-2xl border flex justify-between items-center transition-all ${branch.is_main ? 'bg-[#d0ff00]/5 border-[#d0ff00]/30' : 'bg-black/30 border-white/5'}`}>
-                        <div><h4 className="font-bold text-white flex items-center gap-2">{branch.name}{branch.is_main && <span className="bg-[#d0ff00] text-black text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest">Principal</span>}</h4><p className="text-xs text-gray-400 mt-1">{branch.address}</p></div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleSetMainBranch(branch.id)} title="Marcar Principal" className={`p-2 rounded-lg transition-colors ${branch.is_main ? 'text-[#d0ff00]' : 'text-gray-600 hover:text-[#d0ff00]'}`}><Star size={18} fill={branch.is_main ? "#d0ff00" : "transparent"} /></button>
-                          <button onClick={() => { setEditingBranch(branch); setBranchForm(branch); setShowBranchModal(true); }} className="p-2 rounded-lg text-blue-500 hover:bg-blue-500/10"><Edit size={18} /></button>
-                          <button onClick={() => handleDeleteBranch(branch.id)} className="p-2 rounded-lg text-red-500 hover:bg-red-500/10"><Trash2 size={18} /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Configuración de Marca (Banner/Logo) */}
-                <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/10 relative overflow-hidden"><div className="h-40 bg-black/50 rounded-xl w-full relative overflow-hidden group"><img src={settingsForm.banner_url || "https://placehold.co/600x200"} className="w-full h-full object-cover opacity-50" /><label className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/20 hover:bg-black/40 transition-colors"><div className="bg-black/50 p-2 rounded-full text-white flex items-center gap-2 text-xs font-bold border border-white/20"><Camera size={16} /> Cambiar Portada</div><input type="file" className="hidden" onChange={(e) => handleStoreImageUpload(e, 'banner')} /></label></div><div className="absolute top-32 left-6"><div className="w-24 h-24 rounded-full bg-black border-4 border-[#1a1a1a] relative group overflow-hidden"><img src={settingsForm.logo_url || "https://placehold.co/100"} className="w-full h-full object-cover" /><label className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={20} className="text-white" /><input type="file" className="hidden" onChange={(e) => handleStoreImageUpload(e, 'logo')} /></label></div></div><div className="mt-14 space-y-4"><div><label className="text-xs text-gray-500 uppercase font-bold">Nombre del Local</label><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white font-bold mt-1" value={settingsForm.store_name} onChange={e => setSettingsForm({ ...settingsForm, store_name: e.target.value })} /></div><div><label className="text-xs text-gray-500 uppercase font-bold">Color de Marca</label><div className="flex items-center gap-2 mt-1"><input type="color" className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none" value={settingsForm.color_accent} onChange={e => setSettingsForm({ ...settingsForm, color_accent: e.target.value })} /><span className="text-xs text-gray-400 font-mono">{settingsForm.color_accent}</span></div></div></div></div>
-
-                {/* 🆕 CONFIGURACIÓN DE ENVÍOS */}
-                <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/10 space-y-4">
-                  <h3 className="text-white font-bold text-sm uppercase tracking-widest border-b border-white/10 pb-2 mb-4 flex items-center gap-2">
-                    <Bike size={16} /> Configuración de Envíos
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500 uppercase font-bold">Precio Base ($)</label>
-                      <input
-                        type="number"
-                        className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1"
-                        value={settingsForm.delivery_base_price}
-                        onChange={e => setSettingsForm({ ...settingsForm, delivery_base_price: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 uppercase font-bold">Precio x Km ($)</label>
-                      <input
-                        type="number"
-                        className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1"
-                        value={settingsForm.delivery_price_per_km}
-                        onChange={e => setSettingsForm({ ...settingsForm, delivery_price_per_km: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 bg-black/30 p-3 rounded-xl border border-white/5">
-                    <input
-                      type="checkbox"
-                      className="w-5 h-5 accent-[#d0ff00]"
-                      checked={settingsForm.charge_delivery_in_mp}
-                      onChange={e => setSettingsForm({ ...settingsForm, charge_delivery_in_mp: e.target.checked })}
-                    />
-                    <div>
-                      <p className="text-sm font-bold text-white">Cobrar envío en Mercado Pago</p>
-                      <p className="text-xs text-gray-500">Si se desactiva, el envío se cobra en efectivo al entregar.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Configuración MercadoPago Global (PROTEGIDA) */}
-                <div className="bg-blue-900/10 p-6 rounded-3xl border border-blue-500/20 space-y-4">
-                  <h3 className="text-blue-400 font-bold text-sm flex items-center gap-2"><CreditCard size={16} /> Integración Mercado Pago (Cobros Online)</h3>
-                  <p className="text-xs text-gray-400">Pega aquí tus credenciales de producción. 🔒 Estos datos se guardan encriptados.</p>
-                  <div><label className="text-xs text-gray-500 uppercase font-bold">Access Token (Production)</label><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1" type="password" placeholder="APP_USR-..." value={settingsForm.mp_access_token} onChange={e => setSettingsForm({ ...settingsForm, mp_access_token: e.target.value })} /></div>
-                  <div><label className="text-xs text-gray-500 uppercase font-bold">Public Key (Production)</label><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1" placeholder="TEST-..." value={settingsForm.mp_public_key} onChange={e => setSettingsForm({ ...settingsForm, mp_public_key: e.target.value })} /></div>
-                </div>
-                <button onClick={saveSettings} className="w-full py-4 rounded-xl font-bold shadow-lg transition-all hover:scale-[1.01] flex items-center justify-center gap-2" style={{ backgroundColor: accentColor, color: contrastTextColor }}><Save size={20} /> Guardar Cambios Globales</button>
-              </>
-            ) : (
-              // 📍 MODO SUCURSAL (CONFIGURACIÓN ESPECÍFICA)
-              <>
-                <div className="flex items-center gap-4 mb-6">
-                  <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-2">{getBranchName(viewBranchId)}</h1>
-                    <p className="text-gray-400 text-sm">Configurando datos específicos de este local.</p>
-                  </div>
-                </div>
-
-                <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/10 space-y-4">
-                  <h3 className="text-white font-bold text-sm uppercase tracking-widest border-b border-white/10 pb-2 mb-4">Información de Contacto</h3>
-                  <div>
-                    <label className="text-xs text-gray-500 uppercase font-bold">Dirección Física</label>
-                    <input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1" value={branchForm.address} onChange={e => setBranchForm({ ...branchForm, address: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 uppercase font-bold">Teléfono / WhatsApp de Sucursal</label>
-                    <input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1" value={branchForm.phone} onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="bg-[#1a1a1a] p-6 rounded-3xl border border-white/10 space-y-4">
-                  <h3 className="text-white font-bold text-sm uppercase tracking-widest border-b border-white/10 pb-2 mb-4">Geolocalización</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-xs text-gray-500 uppercase font-bold">Latitud</label><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1" value={branchForm.lat || ''} onChange={e => setBranchForm({ ...branchForm, lat: e.target.value })} /></div>
-                    <div><label className="text-xs text-gray-500 uppercase font-bold">Longitud</label><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white mt-1" value={branchForm.lng || ''} onChange={e => setBranchForm({ ...branchForm, lng: e.target.value })} /></div>
-                  </div>
-                  <button onClick={getBranchLocation} className="text-blue-400 text-xs font-bold flex items-center gap-2 hover:text-blue-300"><MapPin size={14} /> Usar mi ubicación actual</button>
-                </div>
-
-                <button onClick={handleUpdateBranchDetails} className="w-full py-4 rounded-xl font-bold bg-[#d0ff00] text-black shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2"><Save size={20} /> Actualizar Sucursal</button>
-              </>
-            )}
-          </div>
+          <ConfigTab
+            viewBranchId={viewBranchId}
+            branches={branches}
+            branchForm={branchForm}
+            setBranchForm={setBranchForm}
+            settingsForm={settingsForm}
+            setSettingsForm={setSettingsForm}
+            accentColor={accentColor}
+            contrastTextColor={contrastTextColor}
+            getBranchName={getBranchName}
+            onOpenNewBranchModal={handleOpenNewBranchModal}
+            onOpenEditBranchModal={handleOpenEditBranchModal}
+            onSetMainBranch={handleSetMainBranch}
+            onDeleteBranch={handleDeleteBranch}
+            onStoreImageUpload={handleStoreImageUpload}
+            onSaveSettings={saveSettings}
+            onGetBranchLocation={getBranchLocation}
+            onUpdateBranchDetails={handleUpdateBranchDetails}
+          />
         )}
 
       </main>
