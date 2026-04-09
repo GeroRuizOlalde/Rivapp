@@ -83,7 +83,7 @@ export const StoreProvider = ({ children }) => {
           setRole(null);
         }
       } catch (err) {
-        console.error('Error StoreContext:', err.message);
+        logger.error('Error StoreContext:', err.message);
         setError(err);
       } finally {
         setLoading(false);

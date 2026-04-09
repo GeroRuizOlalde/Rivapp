@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase/client';
-import { useStore } from '../context/useStore'; 
-import { useNavigate } from 'react-router-dom'; 
+import { useStore } from '../context/useStore';
+import { useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger'; 
 
 import { useCartStore } from "../store/useCartStore";
 import { useMenuData } from "../hooks/useMenuData";
@@ -110,7 +111,7 @@ const LocationPicker = ({ onLocationSelect, storeLocation, initialPosition }) =>
               const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }; 
               setPosition(newPos); onLocationSelect(newPos); setLoadingGPS(false); 
             }, 
-            (err) => { console.error("GPS Error:", err); setLoadingGPS(false); }, 
+            (err) => { logger.error("GPS Error:", err); setLoadingGPS(false); }, 
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           ); 
       } else { setLoadingGPS(false); } 
@@ -374,7 +375,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
               p_product_id: item.id, 
               p_quantity: item.quantity 
           });
-          if (stockError) console.error("Error de stock:", stockError);
+          if (stockError) logger.error("Error de stock:", stockError);
       }
 
       if (newOrder) { 
@@ -395,7 +396,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
             });
 
             if (mpError) {
-                console.error("Error MP:", mpError);
+                logger.error("Error MP:", mpError);
                 alert("Error conectando con MP. Enviando como pedido normal.");
             } else if (mpData?.init_point) {
                 window.location.href = mpData.init_point;
@@ -450,7 +451,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
 
     } catch (err) { 
         alert("Error al procesar el pedido: " + err.message); 
-        console.error(err); 
+        logger.error(err);
     } finally {
         setIsSending(false);
     }
@@ -697,7 +698,7 @@ export default function GastronomyHome() {
                   };
                   setUserInitialLocation(coords);
               },
-              () => console.log("GPS Denied"),
+              () => logger.debug("GPS Denied"),
               { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           );
       }

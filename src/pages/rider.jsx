@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabase/client';
 import { useStore } from '../context/useStore';
+import { logger } from '../utils/logger';
 import { 
   Bike, MapPin, Phone, CheckCircle, Navigation, Map, LogOut, MessageCircle, Volume2, VolumeX, DollarSign, Wallet
 } from 'lucide-react';
@@ -64,7 +65,7 @@ export default function Rider() {
       setDeliveries(data);
       if (prevDeliveriesCount.current !== null && data.length > prevDeliveriesCount.current) {
         if (soundEnabledRef.current && audioRef.current) {
-            audioRef.current.play().catch(e => console.log("Audio bloqueado:", e));
+            audioRef.current.play().catch(e => logger.debug("Audio bloqueado:", e));
         }
         if ("vibrate" in navigator) navigator.vibrate([500, 200, 500]);
       }

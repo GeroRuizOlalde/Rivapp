@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, ChevronRight, Store, Loader2 } from 'lucide-react';
+import { logger } from '../../utils/logger';
 
 // 👇 HELPER: Calculadora de distancia (Integrada aquí para no crear más archivos)
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
@@ -47,7 +48,7 @@ export default function BranchSelector({ branches = [], onSelect }) {
         setCalculating(false);
       },
       (error) => {
-        console.error("Error GPS:", error);
+        logger.error("Error GPS:", error);
         setCalculating(false);
       }
     );

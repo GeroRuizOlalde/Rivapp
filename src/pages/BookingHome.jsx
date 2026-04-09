@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/useStore';
 import { supabase } from '../supabase/client';
+import { logger } from '../utils/logger';
 import { 
   Calendar as CalendarIcon, Clock, ChevronRight, ChevronLeft, CheckCircle, 
   Loader2, User, Phone, MapPin, Store, Users, Tag, CreditCard, Banknote, Check, Copy 
@@ -235,7 +236,7 @@ export default function BookingHome() {
             });
 
             if (mpError) {
-                console.error("Error MP:", mpError);
+                logger.error("Error MP:", mpError);
                 alert("Error conectando con Mercado Pago. Reserva guardada.");
             } else if (mpData?.init_point) {
                 window.location.href = mpData.init_point;
@@ -304,7 +305,7 @@ export default function BookingHome() {
         setAppliedCoupon(null); 
         setCouponCode('');
 
-    } catch (error) { console.error(error); alert("Error al reservar: " + error.message); } finally { setSaving(false); }
+    } catch (error) { logger.error(error); alert("Error al reservar: " + error.message); } finally { setSaving(false); }
   };
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-blue-500"/></div>;

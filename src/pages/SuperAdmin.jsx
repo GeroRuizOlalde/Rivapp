@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase/client';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger'; 
 import { 
   Shield, Plus, ExternalLink, Power, Trash2, Store, 
   TrendingUp, Users, DollarSign, Activity, Search,
@@ -104,7 +105,7 @@ export default function SuperAdmin() {
             if (funcError) throw new Error("Error creando usuario: " + funcError.message);
             newOwnerId = funcData?.user_id;
         } else {
-            console.debug("Sin email: creando tienda demo huerfana");
+            logger.debug("Sin email: creando tienda demo huerfana");
             isDemoFinal = true; 
         }
 
@@ -137,8 +138,8 @@ export default function SuperAdmin() {
         fetchAllData(); 
 
     } catch (error) {
-        console.error(error);
-        alert("🛑 Error: " + error.message);
+        logger.error(error);
+        alert("Error: " + error.message);
     } finally {
         setCreating(false);
     }

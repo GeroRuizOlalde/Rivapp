@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
 import { useStore } from '../context/useStore';
+import { logger } from '../utils/logger';
 
 export function useMenuData() {
   const { store } = useStore();
@@ -39,7 +40,7 @@ export function useMenuData() {
         setMenuItems(menuData);
 
       } catch (error) {
-        console.error("Error cargando menú:", error.message);
+        logger.error("Error cargando menu:", error.message);
       } finally {
         setLoading(false);
       }

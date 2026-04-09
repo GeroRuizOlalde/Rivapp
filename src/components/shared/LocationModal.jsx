@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
 import { useStore } from '../../context/useStore';
+import { logger } from '../../utils/logger';
 // Importamos la utilidad de distancia (Asegúrate que la ruta sea correcta)
 import { getDistanceFromLatLonInKm } from '../../utils/geolocation'; 
 
@@ -28,7 +29,7 @@ export default function LocationModal() {
         setUserLocation(prev => ({ ...prev, address: streetName }));
       }
     } catch {
-      console.log("No se pudo obtener el nombre de la calle, pero tenemos coordenadas.");
+      logger.debug("No se pudo obtener el nombre de la calle, pero tenemos coordenadas.");
     }
   };
 
@@ -58,7 +59,7 @@ export default function LocationModal() {
             // Seleccionamos la primera (la más cercana) automáticamente
             const nearest = sortedBranches[0];
             if (nearest) {
-                console.log(`📍 Sucursal auto-seleccionada por GPS: ${nearest.name}`);
+                logger.debug(`Sucursal auto-seleccionada por GPS: ${nearest.name}`);
                 selectBranch(nearest.id);
             }
         }
@@ -74,7 +75,7 @@ export default function LocationModal() {
         fetchStreetName(latitude, longitude);
       },
       (error) => {
-        console.error(error);
+        logger.error(error);
         alert("No se pudo detectar el GPS. Ingresa tu dirección manualmente.");
         setManualMode(true);
         setLoading(false);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase/client';
 import { useNavigate, Link } from 'react-router-dom';
+import { logger } from '../utils/logger';
 import { 
   Store, Mail, Lock, ArrowRight, Loader2, CheckCircle, 
   AlertTriangle, Utensils, Scissors, Globe 
@@ -92,7 +93,7 @@ export default function Register() {
           }
         });
       } catch (mailError) {
-        console.warn("⚠️ El usuario se creó, pero falló el envío del mail:", mailError);
+        logger.warn("El usuario se creo, pero fallo el envio del mail:", mailError);
       }
 
       // 6. Redirigir al Admin correcto
@@ -100,8 +101,8 @@ export default function Register() {
       navigate(`/${form.slug}/admin`);
 
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Ocurrió un error inesperado.");
+      logger.error(err);
+      setError(err.message || "Ocurrio un error inesperado.");
     } finally {
       setLoading(false);
     }

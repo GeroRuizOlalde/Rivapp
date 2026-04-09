@@ -3,6 +3,7 @@ import { supabase } from '../supabase/client';
 import { useStore } from '../context/useStore';
 import { useEntitlements } from '../hooks/useEntitlements';
 import { useNavigate } from 'react-router-dom';
+import { logger } from '../utils/logger';
 import { 
   LayoutDashboard, Calendar as CalendarIcon, Clock, Settings, Plus, Trash2, 
   Briefcase, ExternalLink, ChevronLeft, ChevronRight, 
@@ -110,7 +111,7 @@ export default function AdminServices() {
       const audio = document.getElementById('notification-audio');
       if (audio) {
           audio.currentTime = 0;
-          audio.play().catch(() => console.warn("🔇 Audio bloqueado. Interactúa con la página primero."));
+          audio.play().catch(() => logger.warn("Audio bloqueado. Interactua con la pagina primero."));
       }
   }, []);
 

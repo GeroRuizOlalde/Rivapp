@@ -3,6 +3,7 @@ import { supabase } from '../supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, ChevronRight, AlertCircle, Loader2, UserPlus } from 'lucide-react';
 import { buildAppUrl } from '../config/appConfig';
+import { logger } from '../utils/logger';
 import { isPlatformAdmin } from '../utils/platformAdmin';
 
 export default function GlobalLogin() {
@@ -112,7 +113,7 @@ export default function GlobalLogin() {
 
       navigate(`/${targetStore.slug}/admin`);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setError(err.message === 'Invalid login credentials' ? 'Email o contrasena incorrectos.' : err.message);
     } finally {
       setLoading(false);

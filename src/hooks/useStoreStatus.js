@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
 import { useStore } from '../context/useStore';
+import { logger } from '../utils/logger';
 
 export function useStoreStatus() {
   const { store } = useStore();
@@ -27,13 +28,13 @@ export function useStoreStatus() {
           .single();
 
         if (error) {
-            console.warn("No se pudo leer estado, asumiendo abierto:", error.message);
+            logger.warn("No se pudo leer estado, asumiendo abierto:", error.message);
             setIsOpen(true);
         } else {
             setIsOpen(data?.is_active ?? true); 
         }
       } catch (err) {
-        console.error("Error crítico en status:", err);
+        logger.error("Error critico en status:", err);
         setIsOpen(true);
       } finally {
         setLoading(false);
