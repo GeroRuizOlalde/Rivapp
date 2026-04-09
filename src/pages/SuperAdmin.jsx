@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-const MASTER_EMAIL = "admin@rivaestudio.com.ar";
+const MASTER_EMAIL = "geroruizolalde13@gmail.com";
 
 export default function SuperAdmin() {
   const navigate = useNavigate(); 

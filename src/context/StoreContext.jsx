@@ -142,7 +142,14 @@ export const StoreProvider = ({ children }) => {
       setRole('customer'); // O null
   };
 
-  // 3. Recalcular rol si cambia la sucursal manual
+  // 3. Refrescar datos de la tienda
+  const refreshStore = async () => {
+    if (!store?.slug) return;
+    const { data } = await supabase.from('stores_public').select('*').eq('slug', store.slug).single();
+    if (data) setStore(data);
+  };
+
+  // 4. Recalcular rol si cambia la sucursal manual
   const selectBranch = async (branch) => {
       setSelectedBranch(branch);
       if (branch && store) {
@@ -155,16 +162,16 @@ export const StoreProvider = ({ children }) => {
   };
 
   return (
-    <StoreContext.Provider value={{ 
-        store, 
-        branches, 
-        selectedBranch, 
-        selectBranch, 
-        loading, 
+    <StoreContext.Provider value={{
+        store,
+        branches,
+        selectedBranch,
+        selectBranch,
+        refreshStore,
+        loading,
         error,
-        // 🟢 Exportamos User y Role para usarlo en los componentes
         user,
-        role 
+        role
     }}>
       {children}
     </StoreContext.Provider>

@@ -13,6 +13,9 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+import NotificationPanel from '../components/admin/NotificationPanel';
+import NotificationToast from '../components/admin/NotificationToast';
+import { useNotifications, NOTIFICATION_TAB_MAP } from '../hooks/useNotifications';
 
 // --- CONFIGURACIÓN ---
 const BELL_SOUND_URL = "/sounds/ding.mp3"; 
@@ -45,7 +48,8 @@ export default function AdminServices() {
   const { store } = useStore();
   const { features, canAccessAdmin } = useEntitlements(store);
   const navigate = useNavigate();
-  
+  const { notifications: storeNotifications, unreadCount, toasts, dismissToast, markAsRead, markAllAsRead, deleteNotification, clearAll: clearAllNotifications } = useNotifications(store?.id, { soundEnabled: false });
+
   // --- ESTADOS ---
   const [activeTab, setActiveTab] = useState('dashboard');
   const [services, setServices] = useState([]);
@@ -238,12 +242,23 @@ export default function AdminServices() {
       
       <audio id="notification-audio" src={BELL_SOUND_URL} preload="auto"></audio>
 
+      {/* TOASTS EN TIEMPO REAL */}
+      <NotificationToast
+        toasts={toasts}
+        onDismiss={dismissToast}
+        onClickToast={(toast) => {
+          const tab = NOTIFICATION_TAB_MAP[toast.type];
+          if (tab) setActiveTab(tab);
+          markAsRead(toast.id);
+        }}
+      />
+
       <AnimatePresence>
         {activeAlert && ( <motion.div initial={{ y: -100, opacity: 0 }} animate={{ y: 20, opacity: 1 }} exit={{ y: -100, opacity: 0 }} className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-lg"><div className="bg-[#0a0a0a] border-2 border-blue-600 p-5 rounded-2xl shadow-2xl flex items-start gap-4"><div className="bg-blue-600/10 p-3 rounded-xl text-blue-500"><Bell size={24}/></div><div className="flex-1"><h4 className="font-black text-blue-500 text-lg leading-tight mb-1">{activeAlert.title}</h4><p className="text-sm text-gray-300">{activeAlert.message}</p></div><button onClick={() => dismissMessage(activeAlert.id)} className="text-gray-500 hover:text-white transition-colors"><X size={20}/></button></div></motion.div> )}
       </AnimatePresence>
 
       <aside className="w-full md:w-64 bg-[#0a0a0a] border-r border-white/5 p-6 flex flex-col gap-6 sticky top-0 h-screen overflow-y-auto">
-        <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white overflow-hidden border border-white/10 shrink-0" style={{backgroundColor: accentColor}}>{profileForm.logo_url ? <img src={profileForm.logo_url} className="w-full h-full object-cover"/> : store?.name.substring(0,2).toUpperCase()}</div><div className="min-w-0"><h2 className="font-bold leading-none text-white truncate">{profileForm.name || store?.name}</h2><span className="text-xs" style={{color: accentColor}}>Panel Admin</span></div></div>
+        <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white overflow-hidden border border-white/10 shrink-0" style={{backgroundColor: accentColor}}>{profileForm.logo_url ? <img src={profileForm.logo_url} className="w-full h-full object-cover"/> : store?.name.substring(0,2).toUpperCase()}</div><div className="min-w-0 flex-1"><h2 className="font-bold leading-none text-white truncate">{profileForm.name || store?.name}</h2><span className="text-xs" style={{color: accentColor}}>Panel Admin</span></div></div>
         <nav className="flex flex-col gap-2 flex-1">{visibleTabs.map(tab => ( <button key={tab.id} onClick={()=>setActiveTab(tab.id)} className={`p-3 rounded-xl flex gap-3 transition-all items-center ${activeTab===tab.id ? 'text-white shadow-lg' : 'text-gray-400 hover:bg-white/5'}`} style={activeTab === tab.id ? {backgroundColor: accentColor + '33', color: accentColor} : {}}><div className="relative"><tab.icon size={20}/>{tab.id === 'inbox' && pendingAppointments.length > 0 && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#0a0a0a]"></div>}</div><span>{tab.label}</span>{tab.id === 'inbox' && pendingAppointments.length > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">{pendingAppointments.length}</span>}</button> ))}</nav>
         <div className="mt-auto pt-4 border-t border-white/10 flex flex-col gap-2">
             <button onClick={toggleSound} className={`w-full p-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ${isSoundEnabled ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>{isSoundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>} {isSoundEnabled ? "Sonido ON" : "Sonido OFF"}</button>
@@ -259,7 +274,7 @@ export default function AdminServices() {
       <main className="flex-1 p-6 md:p-8 overflow-y-auto h-screen bg-[#050505]">
         {activeTab === 'dashboard' && ( 
             <div className="space-y-6 animate-in fade-in">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"><div><h1 className="text-3xl font-bold italic">Hola, {store?.name}</h1><p className="text-sm text-gray-500">Resumen de ventas.</p></div><div className="flex gap-2 w-full md:w-auto"><a href={`/${store?.slug}`} target="_blank" rel="noopener noreferrer" className="bg-[#1a1a1a] border border-white/10 text-white p-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 flex-1 md:flex-none justify-center group"><ExternalLink size={20} style={{color: accentColor}} className="group-hover:scale-110 transition-transform"/><span className="font-bold text-sm">Ver Local</span></a><button onClick={() => refreshAllData()} className="p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-gray-400 hover:text-white"><RefreshCw size={20}/></button></div></div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"><div><h1 className="text-3xl font-bold italic">Hola, {store?.name}</h1><p className="text-sm text-gray-500">Resumen de ventas.</p></div><div className="flex gap-2 w-full md:w-auto items-center"><NotificationPanel notifications={storeNotifications} unreadCount={unreadCount} onMarkAsRead={markAsRead} onMarkAllAsRead={markAllAsRead} onDelete={deleteNotification} onClearAll={clearAllNotifications} accentColor={accentColor}/><a href={`/${store?.slug}`} target="_blank" rel="noopener noreferrer" className="bg-[#1a1a1a] border border-white/10 text-white p-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 flex-1 md:flex-none justify-center group"><ExternalLink size={20} style={{color: accentColor}} className="group-hover:scale-110 transition-transform"/><span className="font-bold text-sm">Ver Local</span></a><button onClick={() => refreshAllData()} className="p-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-gray-400 hover:text-white"><RefreshCw size={20}/></button></div></div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div className="bg-[#111] p-6 rounded-3xl border border-white/5"><div className="flex justify-between items-center mb-4"><div className="p-3 rounded-2xl" style={{backgroundColor: accentColor + '22', color: accentColor}}><TrendingUp/></div><span className="text-xs font-bold text-gray-500 uppercase">Hoy</span></div><h3 className="text-gray-400 text-sm font-medium">Ingresos estimados</h3><div className="text-3xl font-bold">${stats.incomeToday}</div></div><div className="bg-[#111] p-6 rounded-3xl border border-white/5"><div className="flex justify-between items-center mb-4"><div className="p-3 bg-purple-600/10 rounded-2xl text-purple-500"><CalendarIcon/></div><span className="text-xs font-bold text-gray-500 uppercase">Hoy</span></div><h3 className="text-gray-400 text-sm font-medium">Turnos agendados</h3><div className="text-3xl font-bold">{stats.todayCount}</div></div><div className="bg-[#111] p-6 rounded-3xl border border-white/5"><div className="flex justify-between items-center mb-4"><div className="p-3 bg-green-600/10 rounded-2xl text-green-500"><Clock/></div><span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Próximo</span></div>{stats.nextApt ? (<div><div className="text-xl font-bold truncate">{stats.nextApt.customer_name}</div><div className="text-sm text-gray-500">{new Date(stats.nextApt.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {stats.nextApt.services?.name}</div></div>) : <div className="text-gray-600 italic">Sin más turnos.</div>}</div></div>
                 <div className="bg-[#111] p-8 rounded-3xl border border-white/5">
                     <h3 className="font-bold text-lg mb-8 flex items-center gap-2"><TrendingUp style={{color: accentColor}} size={18}/> Facturación Semanal</h3>

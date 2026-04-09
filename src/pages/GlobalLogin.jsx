@@ -54,7 +54,7 @@ export default function GlobalLogin() {
       // 2. VERIFICACIÓN: ¿Quién es este usuario?
 
       // A) Es el Super Admin
-      if (user.email === 'admin@rivaestudio.com.ar') {
+      if (user.email === 'geroruizolalde13@gmail.com') {
         navigate('/master-panel');
         return;
       }

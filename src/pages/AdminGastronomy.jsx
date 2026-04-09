@@ -4,6 +4,9 @@ import { useStore } from '../context/StoreContext';
 import { useEntitlements } from '../hooks/useEntitlements';
 import { useNavigate } from 'react-router-dom';
 import AdminBranchSelector from '../components/admin/AdminBranchSelector';
+import NotificationPanel from '../components/admin/NotificationPanel';
+import NotificationToast from '../components/admin/NotificationToast';
+import { useNotifications, NOTIFICATION_TAB_MAP } from '../hooks/useNotifications';
 
 // --- ICONOS (LUCIDE REACT) ---
 import {
@@ -215,6 +218,7 @@ export default function AdminGastronomy() {
   const { store: config, refreshStore, role, user } = useStore();
   const { features, canAccessAdmin } = useEntitlements(config);
   const navigate = useNavigate();
+  const { notifications: storeNotifications, unreadCount, toasts, dismissToast, markAsRead, markAllAsRead, deleteNotification, clearAll: clearAllNotifications } = useNotifications(config?.id, { soundEnabled: false });
 
   // --- ESTADOS DE UI ---
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -397,13 +401,21 @@ export default function AdminGastronomy() {
   };
 
   useEffect(() => {
-    const checkSession = () => {
+    const checkSession = async () => {
+      // Primero intentar localStorage (login flow normal)
       const localSession = localStorage.getItem('rivapp_session');
       try {
         const parsed = JSON.parse(localSession);
-        setSession(parsed);
-        setLoadingSession(false);
+        if (parsed) { setSession(parsed); setLoadingSession(false); return; }
       } catch (e) { }
+      // Fallback: usar sesión de Supabase Auth directamente
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession?.user) {
+        const sessionData = { id: authSession.user.id, email: authSession.user.email };
+        setSession(sessionData);
+        localStorage.setItem('rivapp_session', JSON.stringify(sessionData));
+      }
+      setLoadingSession(false);
     };
     if (config !== undefined) checkSession();
   }, [config, navigate]);
@@ -673,6 +685,17 @@ export default function AdminGastronomy() {
   return (
     <div className={`min-h-screen bg-[#0f0f0f] text-white flex flex-col lg:flex-row relative ${flash ? 'bg-orange-900/50' : ''} transition-colors duration-200`}>
 
+      {/* TOASTS EN TIEMPO REAL */}
+      <NotificationToast
+        toasts={toasts}
+        onDismiss={dismissToast}
+        onClickToast={(toast) => {
+          const tab = NOTIFICATION_TAB_MAP[toast.type];
+          if (tab) setActiveTab(tab);
+          markAsRead(toast.id);
+        }}
+      />
+
       {/* ALERTA GLOBAL FLOTANTE */}
       <AnimatePresence>
         {activeAlert && (
@@ -721,7 +744,7 @@ export default function AdminGastronomy() {
         {/* HEADER MÓVIL CON SELECTOR */}
         <div className="lg:hidden flex justify-between items-center mb-6">
           <div className="w-2/3">
-             <AdminBranchSelector 
+             <AdminBranchSelector
                 selectedBranchId={viewBranchId}
                 onSelect={handleBranchChange}
              />
@@ -738,7 +761,18 @@ export default function AdminGastronomy() {
                       Viendo datos de: <strong className="text-white">{!viewBranchId ? 'Todas las Sucursales' : getBranchName(viewBranchId)}</strong>.
                   </p>
               </div>
-              <a href={`/${config?.slug}`} target="_blank" rel="noopener noreferrer" className="bg-[#1a1a1a] border border-white/10 text-white p-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 group"><ExternalLink size={20} style={{ color: accentColor }} className="group-hover:scale-110 transition-transform" /> <span className="font-bold text-sm">Ver Local</span></a>
+              <div className="flex items-center gap-2">
+                <NotificationPanel
+                  notifications={storeNotifications}
+                  unreadCount={unreadCount}
+                  onMarkAsRead={markAsRead}
+                  onMarkAllAsRead={markAllAsRead}
+                  onDelete={deleteNotification}
+                  onClearAll={clearAllNotifications}
+                  accentColor={accentColor}
+                />
+                <a href={`/${config?.slug}`} target="_blank" rel="noopener noreferrer" className="bg-[#1a1a1a] border border-white/10 text-white p-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 group"><ExternalLink size={20} style={{ color: accentColor }} className="group-hover:scale-110 transition-transform" /> <span className="font-bold text-sm">Ver Local</span></a>
+              </div>
             </div>
             {globalNotifications.length > 0 && (
               <div className="bg-[#1a1a1a] p-6 rounded-[2rem] border border-[#d0ff00]/20 relative overflow-hidden shadow-lg">
