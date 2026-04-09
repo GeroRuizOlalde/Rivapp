@@ -94,25 +94,30 @@ export default function SuperAdmin() {
 
         // 2. ¿Tiene email? -> Intentamos crear el usuario dueño
         if (newStoreData.owner_email && newStoreData.owner_email.trim() !== "") {
-            // Refrescar sesión para asegurar JWT válido
-            const { error: refreshError } = await supabase.auth.refreshSession();
-            if (refreshError) {
-                logger.error("Error refrescando sesión:", refreshError);
-                throw new Error("Sesión expirada. Volvé a iniciar sesión.");
-            }
+            // Llamada directa con fetch para capturar el body de error completo
+            const { data: { session } } = await supabase.auth.getSession();
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-            const { data: funcData, error: funcError } = await supabase.functions.invoke('create-store-owner', {
-                body: {
+            const response = await fetch(`${supabaseUrl}/functions/v1/create-store-owner`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': anonKey,
+                    ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+                },
+                body: JSON.stringify({
                     email: newStoreData.owner_email,
                     password: newStoreData.password,
                     name: newStoreData.name
-                }
+                })
             });
 
-            if (funcError) {
-                // Intentar extraer el mensaje real del body de la respuesta
-                const detail = funcData?.error || funcError.message;
-                throw new Error("Error creando usuario: " + detail);
+            const funcData = await response.json();
+            logger.debug("create-store-owner response:", response.status, funcData);
+
+            if (!response.ok) {
+                throw new Error("Error creando usuario: " + (funcData?.error || response.statusText));
             }
             newOwnerId = funcData?.user_id;
         } else {
