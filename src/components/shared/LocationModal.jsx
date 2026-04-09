@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
-import { useStore } from '../../context/StoreContext';
+import { useStore } from '../../context/useStore';
 // Importamos la utilidad de distancia (Asegúrate que la ruta sea correcta)
 import { getDistanceFromLatLonInKm } from '../../utils/geolocation'; 
 
@@ -27,7 +27,7 @@ export default function LocationModal() {
 
         setUserLocation(prev => ({ ...prev, address: streetName }));
       }
-    } catch (error) {
+    } catch {
       console.log("No se pudo obtener el nombre de la calle, pero tenemos coordenadas.");
     }
   };

@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 
 export const useCartStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       cart: [],
       cartBranchId: null, // 🟢 NUEVO: Guardamos el ID de la sucursal dueña del carrito
 

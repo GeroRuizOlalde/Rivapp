@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { Store, ChevronDown, Lock, Building2 } from 'lucide-react';
 import { useAdminRole } from '../../hooks/useAdminRole'; // El hook que creamos antes
-import { useStore } from '../../context/StoreContext';
+import { useStore } from '../../context/useStore';
 
 export default function AdminBranchSelector({ selectedBranchId, onSelect }) {
   const { store, branches } = useStore();
   
   // 1. Averiguamos quién es el usuario (Dueño vs Empleado)
-  const { role, scope, assignedBranchId, loading } = useAdminRole(store?.id);
+  const { scope, assignedBranchId, loading } = useAdminRole(store?.id);
 
   // 2. Efecto de seguridad: Si es empleado, forzamos su sucursal
   useEffect(() => {
@@ -17,7 +17,7 @@ export default function AdminBranchSelector({ selectedBranchId, onSelect }) {
            onSelect(assignedBranchId);
        }
     }
-  }, [loading, scope, assignedBranchId, selectedBranchId]);
+  }, [assignedBranchId, loading, onSelect, scope, selectedBranchId]);
 
   if (loading) return <div className="h-10 w-40 bg-gray-800 animate-pulse rounded-lg"></div>;
 

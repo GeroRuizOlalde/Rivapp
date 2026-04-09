@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabase/client';
-import { useStore } from '../context/StoreContext';
+import { useStore } from '../context/useStore';
 import { 
   Bike, MapPin, Phone, CheckCircle, Navigation, Map, LogOut, MessageCircle, Volume2, VolumeX, DollarSign, Wallet
 } from 'lucide-react';
@@ -49,7 +49,7 @@ export default function Rider() {
   const handleLogout = () => { setIsAuthenticated(false); setRiderInfo(null); setDeliveries([]); setPin(""); };
 
   // 🔔 BUSCAR PEDIDOS
-  const fetchDeliveries = async (currentRiderId) => {
+  const fetchDeliveries = useCallback(async (currentRiderId) => {
     if (!store || !currentRiderId) return;
     
     const { data } = await supabase
@@ -70,7 +70,7 @@ export default function Rider() {
       }
       prevDeliveriesCount.current = data.length;
     }
-  };
+  }, [store]);
 
   useEffect(() => {
     if (isAuthenticated && riderInfo) {
@@ -78,7 +78,7 @@ export default function Rider() {
         const interval = setInterval(() => fetchDeliveries(riderInfo.id), 5000);
         return () => clearInterval(interval);
     }
-  }, [isAuthenticated, riderInfo]);
+  }, [fetchDeliveries, isAuthenticated, riderInfo]);
 
   const toggleSound = () => {
     const newState = !isSoundEnabled;

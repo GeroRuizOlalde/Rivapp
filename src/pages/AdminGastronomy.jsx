@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase/client';
-import { useStore } from '../context/StoreContext';
+import { useStore } from '../context/useStore';
 import { useEntitlements } from '../hooks/useEntitlements';
 import { useNavigate } from 'react-router-dom';
 import AdminBranchSelector from '../components/admin/AdminBranchSelector';
@@ -14,9 +14,9 @@ import {
   Lock, Store, Plus, CheckCircle, XCircle, Clock, LayoutGrid, List, RefreshCw, X,
   Image as ImageIcon, DollarSign, Ticket, Archive, BarChart3, LogOut, Printer,
   History, Bell, Package, MapPin, Bike, Trash2, Edit, Camera, Activity,
-  Settings, Save, Upload, PieChart as PieIcon, PlayCircle, TrendingUp, Zap,
+  Settings, Save, Upload, PlayCircle, TrendingUp, Zap,
   Loader2, Volume2, VolumeX, AlertCircle, Users, Star, MessageSquare,
-  ArrowRight, Layers, Infinity, Puzzle, ExternalLink, Menu as MenuIcon, Grid,
+  ArrowRight, Layers, Infinity as InfinityIcon, Puzzle, ExternalLink, Menu as MenuIcon, Grid,
   Power, ShoppingBag, Utensils, Crown, Check, CloudUpload, Filter,
   CreditCard, Phone, ChevronRight, MessageCircle, FileText, User, Globe, Shield, ChevronDown, Mail,
   Info
@@ -28,201 +28,20 @@ import {
 } from 'recharts';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { ALL_TABS, BELL_SOUND } from './admin-gastronomy/constants';
+import { KanbanColumn, OrderCard } from './admin-gastronomy/components';
+import { getContrastText, printZTicket } from './admin-gastronomy/utils';
 
-// ==========================================
-// 1. CONSTANTES Y CONFIGURACIÓN GLOBAL
-// ==========================================
-
-const BELL_SOUND = "/sounds/bell.mp3";
-
-const ALL_TABS = [
-  { id: 'dashboard', label: 'Panel', icon: PieIcon },
-  { id: 'orders', label: 'Pedidos', icon: ShoppingBag },
-  { id: 'team', label: 'Equipo', icon: Users, proOnly: true },
-  { id: 'crm', label: 'Clientes', icon: Users, proOnly: true },
-  { id: 'menu', label: 'Menú', icon: Utensils },
-  { id: 'riders', label: 'Riders', icon: Bike, proOnly: true },
-  { id: 'coupons', label: 'Cupones', icon: Ticket, proOnly: true },
-  { id: 'reviews', label: 'Reseñas', icon: MessageSquare, proOnly: true },
-  { id: 'history', label: 'Historial', icon: History, proOnly: true },
-  { id: 'billing', label: 'Suscripción', icon: CreditCard },
-  { id: 'config', label: 'Ajustes', icon: Settings },
-];
-
-// ==========================================
-// 2. FUNCIONES AUXILIARES (HELPERS)
-// ==========================================
-
-const getContrastText = (hexcolor) => {
-  if (!hexcolor) return 'white';
-  const r = parseInt(hexcolor.substring(1, 3), 16);
-  const g = parseInt(hexcolor.substring(3, 5), 16);
-  const b = parseInt(hexcolor.substring(5, 7), 16);
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  return (yiq >= 128) ? 'black' : 'white';
-};
-
-const printZTicket = (totals, storeName) => {
-  const popupWin = window.open('', '_blank', 'width=350,height=600');
-  if (!popupWin) return alert("Por favor permite ventanas emergentes para imprimir.");
-
-  const now = new Date();
-  const html = `
-      <html>
-        <head>
-          <title>Cierre de Caja</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-            body { font-family: 'Courier Prime', monospace; padding: 20px; font-size: 12px; color: #000; width: 80mm; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-            .title { font-size: 16px; font-weight: bold; margin: 0; }
-            .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-            .total-row { display: flex; justify-content: space-between; margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; font-weight: bold; font-size: 14px; }
-            .footer { text-align: center; margin-top: 20px; font-size: 10px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1 class="title">${storeName}</h1>
-            <p>REPORTE DE CIERRE Z</p>
-            <p>${now.toLocaleDateString()} - ${now.toLocaleTimeString()}</p>
-          </div>
-          <div class="row"><span>Pedidos Totales:</span><span>${totals.count}</span></div>
-          <br/>
-          <div class="row"><span>Efectivo:</span><span>$${totals.cash.toLocaleString()}</span></div>
-          <div class="row"><span>Digital:</span><span>$${totals.digital.toLocaleString()}</span></div>
-          <div class="total-row"><span>TOTAL VENTAS:</span><span>$${totals.total.toLocaleString()}</span></div>
-          <div class="footer"><p>Sistema RIVA ESTUDIO</p></div>
-          <script>window.print();setTimeout(function(){ window.close(); }, 500);</script>
-        </body>
-      </html>
-    `;
-  popupWin.document.write(html);
-  popupWin.document.close();
-};
-
-// ==========================================
-// 3. SUB-COMPONENTES INTERNOS
-// ==========================================
-
-const KanbanColumn = ({ title, count, children }) => (
-  <div className="flex-1 flex flex-col bg-[#141414] rounded-2xl border border-white/5 min-w-[300px] snap-center h-full max-h-[calc(100vh-140px)]">
-    <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#1a1a1a] rounded-t-2xl sticky top-0 z-10">
-      <h3 className="font-bold text-white text-xs uppercase tracking-widest">{title}</h3>
-      <span className="bg-white/10 text-gray-400 text-[10px] px-2 py-1 rounded-full font-bold">{count}</span>
-    </div>
-    <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-      {children}
-    </div>
-  </div>
-);
-
-const OrderCard = ({ order, onStatusChange, onReject, onPrint, isFinished, onAssignRider, onMarkPaid, branchName }) => {
-  const isPickup = order.delivery_type?.toLowerCase() === 'retiro';
-  const isPaid = order.payment_status === 'paid' || order.paid === true;
-
-  return (
-    <div className="bg-[#1e1e1e] p-4 rounded-xl border border-white/5 shadow-xl group hover:border-white/10 transition-all relative overflow-hidden">
-      {/* Etiqueta de Pago */}
-      {order.payment_method === 'mercadopago' && (
-        <div className={`absolute top-0 right-0 px-3 py-1 text-[10px] font-bold rounded-bl-xl flex items-center gap-1 ${isPaid ? 'bg-green-500 text-white' : 'bg-[#009EE3] text-white'}`}>
-          {isPaid ? <><Check size={10} /> PAGADO</> : 'MERCADO PAGO'}
-        </div>
-      )}
-
-      {/* Cabecera */}
-      <div className="flex justify-between items-start mb-3 mt-2">
-        <div>
-          <h4 className="font-bold text-white leading-none text-lg">{order.customer_name}</h4>
-          {branchName && (
-            <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400 font-mono bg-white/5 px-2 py-0.5 rounded w-fit">
-              <MapPin size={10} className="text-[#d0ff00]" /> {branchName}
-            </div>
-          )}
-          <div className="flex items-center gap-2 mt-2">
-            <p className="text-[10px] text-gray-500 uppercase font-bold">{order.payment_method}</p>
-            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${isPickup ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-500'}`}>
-              {isPickup ? 'Retiro' : 'Delivery'}
-            </span>
-            {!isPaid && !isFinished && (
-              <button onClick={() => onMarkPaid(order.id)} className="text-[10px] bg-white/10 hover:bg-green-500/20 hover:text-green-500 text-gray-400 px-2 py-0.5 rounded transition-colors flex items-center gap-1" title="Marcar como pagado manualmente">
-                <Check size={10} />
-              </button>
-            )}
-          </div>
-        </div>
-        <button onClick={() => onPrint(order)} className="p-2 bg-black/50 rounded-lg text-blue-400 hover:text-white transition-colors">
-          <Printer size={16} />
-        </button>
-      </div>
-
-      {/* Items */}
-      <div className="space-y-1 mb-4 border-l-2 border-white/5 pl-3">
-        {(order.items || []).map((item, idx) => (
-          <div key={idx} className="text-sm text-gray-300">
-            <span className="font-bold text-white">{item.quantity}x</span> {item.name} {item.variantName && <span className="text-gray-500 text-xs">({item.variantName})</span>}
-            {item.selectedExtras && item.selectedExtras.length > 0 && (
-              <div className="text-[10px] text-gray-500 ml-4">+ {item.selectedExtras.map(e => e.name).join(', ')}</div>
-            )}
-          </div>
-        ))}
-        {order.note && <p className="text-xs text-yellow-500 italic mt-2 bg-yellow-500/10 p-2 rounded border border-yellow-500/20">Nota: "{order.note}"</p>}
-        {!isPickup && (
-          <div className="mt-2 text-xs flex items-center gap-1 text-blue-400 font-bold">
-            <Bike size={12} /> Envío: ${order.delivery_cost || 0}
-          </div>
-        )}
-        <div className="mt-2 text-lg font-black text-white text-right border-t border-white/10 pt-2">
-          ${order.total?.toLocaleString()}
-        </div>
-      </div>
-
-      {/* Botones de Acción */}
-      {!isFinished && (
-        <div className="grid grid-cols-2 gap-2">
-          {order.status === 'pendiente' && (
-            <>
-              <button onClick={() => onReject(order.id)} className="bg-red-500/10 text-red-500 py-3 rounded-xl text-xs font-bold uppercase hover:bg-red-500 hover:text-white transition-colors">Rechazar</button>
-              <button onClick={() => onStatusChange(order.id, 'confirmado')} className="bg-green-500/10 text-green-500 py-3 rounded-xl text-xs font-bold uppercase hover:bg-green-500 hover:text-white transition-colors">Confirmar</button>
-            </>
-          )}
-          {order.status === 'confirmado' && (
-            <button onClick={() => onStatusChange(order.id, 'listo')} className="col-span-2 bg-blue-600 py-3 rounded-xl text-xs font-bold text-white uppercase hover:bg-blue-500 transition-colors">Marcar Listo</button>
-          )}
-          {order.status === 'listo' && (
-            <>
-              {isPickup ? (
-                <button onClick={() => onStatusChange(order.id, 'entregado')} className="col-span-2 bg-green-600 py-3 rounded-xl text-xs font-bold text-white uppercase hover:bg-green-500 transition-colors flex items-center justify-center gap-2">
-                  <User size={16} /> Entregado al Cliente
-                </button>
-              ) : (
-                <>
-                  <button onClick={onAssignRider} className="col-span-1 bg-yellow-500/10 text-yellow-500 py-3 rounded-xl text-xs font-bold uppercase hover:bg-yellow-500/20 transition-colors">Rider</button>
-                  <button onClick={() => onStatusChange(order.id, 'entregado')} className="col-span-1 bg-green-600 py-3 rounded-xl text-xs font-bold text-white uppercase hover:bg-green-500 transition-colors">Entregar</button>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      {order.status === 'rechazado' && <div className="text-red-500 text-xs font-bold text-center uppercase border border-red-500/20 p-2 rounded">Cancelado</div>}
-    </div>
-  );
-};
-
-// ==========================================
-// 4. COMPONENTE PRINCIPAL
-// ==========================================
 
 export default function AdminGastronomy() {
   // 🟢 1. OBTENER ROL DEL CONTEXTO
-  const { store: config, refreshStore, role, user } = useStore();
+  const { store: config, refreshStore, role } = useStore();
   const { features, canAccessAdmin } = useEntitlements(config);
   const navigate = useNavigate();
   const { notifications: storeNotifications, unreadCount, toasts, dismissToast, markAsRead, markAllAsRead, deleteNotification, clearAll: clearAllNotifications } = useNotifications(config?.id, { soundEnabled: false });
 
   // --- ESTADOS DE UI ---
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isOpen, setIsOpen] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
@@ -261,7 +80,7 @@ export default function AdminGastronomy() {
   const [reviews, setReviews] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [dashboardData, setDashboardData] = useState({ totalRevenue: 0, totalOrders: 0, avgTicket: 0, chartData: [], topProducts: [], paymentData: [] });
-  const [statsFilter, setStatsFilter] = useState('today');
+  const statsFilter = 'today';
 
   // --- NOTIFICACIONES ---
   const [globalNotifications, setGlobalNotifications] = useState([]);
@@ -357,7 +176,7 @@ export default function AdminGastronomy() {
     }
   }, [config, viewBranchId, playNotification]);
 
-  const fetchGlobalNotifications = async () => {
+  const fetchGlobalNotifications = useCallback(async () => {
     const { data } = await supabase.from('global_notifications').select('*').eq('is_active', true).or(`target.eq.all,target.eq.gastronomia`).order('created_at', { ascending: false });
     if (data && data.length > 0) {
       const filtered = data.filter(n => !dismissedMessages.includes(n.id));
@@ -368,30 +187,30 @@ export default function AdminGastronomy() {
         if (new Date(newest.created_at) > fiveMinAgo) setActiveAlert(newest);
       }
     }
-  };
+  }, [dismissedMessages]);
 
-  const fetchBranches = async () => { const { data } = await supabase.from('branches').select('*').eq('store_id', config.id).eq('is_active', true).order('name'); if (data) setBranches(data); };
+  const fetchBranches = useCallback(async () => { const { data } = await supabase.from('branches').select('*').eq('store_id', config.id).eq('is_active', true).order('name'); if (data) setBranches(data); }, [config?.id]);
   
-  const fetchRiders = async () => { 
+  const fetchRiders = useCallback(async () => { 
       const { data } = await supabase
         .from('riders')
         .select('*, branches(name)')
         .eq('store_id', config.id)
         .order('id'); 
       if (data) setRiders(data || []); 
-  };
+  }, [config?.id]);
 
-  const fetchMenu = async () => { const { data } = await supabase.from('menu').select('*').eq('store_id', config.id).order('id', { ascending: false }); if (data) setMenuItems(data || []); };
-  const fetchHistory = async () => { const { data } = await supabase.from('orders').select('*').eq('store_id', config.id).or('status.eq.archivado,status.eq.rechazado,status.eq.entregado').order('created_at', { ascending: false }).limit(500); if (data) setHistoryOrders(data || []); };
-  const fetchCoupons = async () => { const { data } = await supabase.from('coupons').select('*').eq('store_id', config.id).order('id'); if (data) setCoupons(data || []); };
-  const fetchReviews = async () => { const { data } = await supabase.from('orders').select('*').eq('store_id', config.id).not('rating', 'is', null).order('created_at', { ascending: false }); if (data) setReviews(data || []); };
-  const fetchCRMData = async () => { if (!config?.id) return; const { data } = await supabase.from('customer_insights').select('*').eq('store_id', config.id).order('total_orders', { ascending: false }); if (data) setCustomers(data); };
+  const fetchMenu = useCallback(async () => { const { data } = await supabase.from('menu').select('*').eq('store_id', config.id).order('id', { ascending: false }); if (data) setMenuItems(data || []); }, [config?.id]);
+  const fetchHistory = useCallback(async () => { const { data } = await supabase.from('orders').select('*').eq('store_id', config.id).or('status.eq.archivado,status.eq.rechazado,status.eq.entregado').order('created_at', { ascending: false }).limit(500); if (data) setHistoryOrders(data || []); }, [config?.id]);
+  const fetchCoupons = useCallback(async () => { const { data } = await supabase.from('coupons').select('*').eq('store_id', config.id).order('id'); if (data) setCoupons(data || []); }, [config?.id]);
+  const fetchReviews = useCallback(async () => { const { data } = await supabase.from('orders').select('*').eq('store_id', config.id).not('rating', 'is', null).order('created_at', { ascending: false }); if (data) setReviews(data || []); }, [config?.id]);
+  const fetchCRMData = useCallback(async () => { if (!config?.id) return; const { data } = await supabase.from('customer_insights').select('*').eq('store_id', config.id).order('total_orders', { ascending: false }); if (data) setCustomers(data); }, [config?.id]);
   
   // 🟢 FETCH TEAM INVITES
-  const fetchTeamInvites = async () => {
+  const fetchTeamInvites = useCallback(async () => {
       const { data } = await supabase.from('team_invitations').select('*').eq('store_id', config.id).order('created_at', { ascending: false });
       if (data) setTeamInvites(data);
-  };
+  }, [config?.id]);
 
   const dismissMessage = (id) => {
     const updated = [...dismissedMessages, id];
@@ -408,7 +227,9 @@ export default function AdminGastronomy() {
       try {
         const parsed = JSON.parse(localSession);
         if (parsed) { setSession(parsed); setLoadingSession(false); return; }
-      } catch (e) { }
+      } catch {
+        // Ignore invalid cached session payloads and fall back to Supabase Auth.
+      }
       // Fallback: usar sesión de Supabase Auth directamente
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (authSession?.user) {
@@ -438,7 +259,7 @@ export default function AdminGastronomy() {
       charge_delivery_in_mp: config.charge_delivery_in_mp ?? true
     });
     setIsOpen(config.is_active);
-  }, [session, config]);
+  }, [config, fetchBranches, fetchCRMData, fetchCoupons, fetchGlobalNotifications, fetchHistory, fetchMenu, fetchReviews, fetchRiders, fetchTeamInvites, session]);
 
   useEffect(() => {
     if (!config?.id) return;
@@ -453,7 +274,7 @@ export default function AdminGastronomy() {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [config?.id, viewBranchId, fetchOrders]);
+  }, [config?.id, fetchGlobalNotifications, fetchOrders, viewBranchId]);
 
   // 🟢 2. FILTRADO DE TABS SEGÚN ROL
   const visibleTabs = useMemo(() => {
@@ -560,10 +381,32 @@ export default function AdminGastronomy() {
   };
 
   const handleRejectOrder = async (id) => { const reason = window.prompt("Motivo:"); if (!reason) return; await supabase.from('orders').update({ status: 'rechazado', rejection_reason: reason }).eq('id', id); fetchOrders(); };
-  const handlePrintOrder = (order) => { const popupWin = window.open('', '_blank', 'width=350,height=600'); const itemsHtml = (order.items || []).map(i => `<tr><td>${i.quantity}</td><td>${i.name}</td><td>$${(i.finalPrice * i.quantity).toLocaleString()}</td></tr>`).join(''); const html = `<html><body style=\"font-family:monospace\"><h2>${config.name}</h2><p>Pedido #${order.id.slice(0, 6)}</p><hr/><table style=\"width:100%\">${itemsHtml}</table><hr/><h3>TOTAL: $${order.total}</h3><p>${order.note ? 'NOTA: ' + order.note : ''}</p><script>window.print();setTimeout(window.close, 500);</script></body></html>`; popupWin.document.write(html); popupWin.document.close(); };
+  const handlePrintOrder = (order) => {
+    const popupWin = window.open('', '_blank', 'width=350,height=600');
+    const itemsHtml = (order.items || [])
+      .map((item) => `<tr><td>${item.quantity}</td><td>${item.name}</td><td>$${(item.finalPrice * item.quantity).toLocaleString()}</td></tr>`)
+      .join('');
+    const html = `
+      <html>
+        <body style="font-family: monospace">
+          <h2>${config.name}</h2>
+          <p>Pedido #${order.id.slice(0, 6)}</p>
+          <hr />
+          <table style="width: 100%">${itemsHtml}</table>
+          <hr />
+          <h3>TOTAL: $${order.total}</h3>
+          <p>${order.note ? `NOTA: ${order.note}` : ''}</p>
+          <script>window.print();setTimeout(window.close, 500);</script>
+        </body>
+      </html>
+    `;
+
+    popupWin.document.write(html);
+    popupWin.document.close();
+  };
   const handleCloseRegister = async () => { if (!window.confirm("¿Estás seguro de cerrar la caja?")) return; const validOrders = orders.filter(o => o.status !== 'rechazado' && o.status !== 'archivado'); if (validOrders.length === 0) return alert("No hay pedidos para cerrar."); const totalRevenue = validOrders.reduce((sum, o) => sum + (o.total || 0), 0); const cashTotal = validOrders.filter(o => o.payment_method === 'efectivo').reduce((sum, o) => sum + (o.total || 0), 0); printZTicket({ count: validOrders.length, total: totalRevenue, cash: cashTotal, digital: totalRevenue - cashTotal }, settingsForm.store_name); await supabase.from('orders').update({ status: 'archivado' }).eq('store_id', config.id).neq('status', 'archivado'); setOrders([]); fetchHistory(); };
-  const handleImageUpload = async (e, isEditing = false) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); try { const fileName = `${config.id}-${Date.now()}`; await supabase.storage.from('menu-images').upload(fileName, file); const { data } = supabase.storage.from('menu-images').getPublicUrl(fileName); if (isEditing) setEditingProduct(prev => ({ ...prev, image: data.publicUrl })); else setNewProduct(prev => ({ ...prev, image: data.publicUrl })); } catch (err) { alert("Error subiendo imagen"); } setUploadingImage(false); };
-  const handleStoreImageUpload = async (e, type) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); try { const fileName = `${type}-${config.id}-${Date.now()}`; await supabase.storage.from('menu-images').upload(fileName, file); const { data } = supabase.storage.from('menu-images').getPublicUrl(fileName); if (type === 'logo') setSettingsForm(prev => ({ ...prev, logo_url: data.publicUrl })); if (type === 'banner') setSettingsForm(prev => ({ ...prev, banner_url: data.publicUrl })); } catch (err) { alert("Error subiendo imagen"); } setUploadingImage(false); };
+  const handleImageUpload = async (e, isEditing = false) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); try { const fileName = `${config.id}-${Date.now()}`; await supabase.storage.from('menu-images').upload(fileName, file); const { data } = supabase.storage.from('menu-images').getPublicUrl(fileName); if (isEditing) setEditingProduct(prev => ({ ...prev, image: data.publicUrl })); else setNewProduct(prev => ({ ...prev, image: data.publicUrl })); } catch { alert("Error subiendo imagen"); } setUploadingImage(false); };
+  const handleStoreImageUpload = async (e, type) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); try { const fileName = `${type}-${config.id}-${Date.now()}`; await supabase.storage.from('menu-images').upload(fileName, file); const { data } = supabase.storage.from('menu-images').getPublicUrl(fileName); if (type === 'logo') setSettingsForm(prev => ({ ...prev, logo_url: data.publicUrl })); if (type === 'banner') setSettingsForm(prev => ({ ...prev, banner_url: data.publicUrl })); } catch { alert("Error subiendo imagen"); } setUploadingImage(false); };
     
   const saveSettings = async (e) => {
     e.preventDefault();
@@ -593,7 +436,7 @@ export default function AdminGastronomy() {
   const deleteCoupon = async (id) => { if (window.confirm("¿Borrar?")) { await supabase.from('coupons').update({ active: false }).eq('id', id); fetchCoupons(); } };
   const handleBulkPriceUpdate = async () => { if (!window.confirm(`¿Seguro?`)) return; const updates = menuItems.map(item => { let cPrice = parseFloat(item.price), nPrice = cPrice, v = parseFloat(priceConfig.value); if (priceConfig.type === 'percent') nPrice = Math.round(cPrice * (priceConfig.action === 'increase' ? 1 + v / 100 : 1 - v / 100)); else nPrice = priceConfig.action === 'increase' ? cPrice + v : cPrice - v; return { ...item, price: nPrice > 0 ? nPrice : 0 }; }); await supabase.from('menu').upsert(updates); setShowPriceModal(false); fetchMenu(); };
   const handleCreatePromo = async (e) => { e.preventDefault(); if (!promoTargetItem) return; let pName = "", pPrice = 0, bPrice = parseFloat(promoTargetItem.price); if (promoConfig.type === 'nxm') { pName = `${promoConfig.buy}x${promoConfig.pay} ${promoTargetItem.name}`; pPrice = bPrice * promoConfig.pay; } else { pName = `${promoTargetItem.name} (${promoConfig.value}% OFF)`; pPrice = Math.round(bPrice * (1 - promoConfig.value / 100)); } await supabase.from('menu').insert([{ name: pName, store_id: config.id, description: `Promoción: ${pName}`, price: pPrice, category: 'Promociones', image: promoTargetItem.image, available: true, stock: promoTargetItem.stock, has_infinite_stock: promoTargetItem.has_infinite_stock, extras: promoTargetItem.extras || [] }]); setShowPromoModal(false); fetchMenu(); };
-  const handleSubscribe = async () => { if (!config?.id) return alert("Error: No se identificó la tienda."); const btn = document.activeElement; if (btn) btn.innerText = "Procesando..."; try { const { data, error } = await supabase.functions.invoke('create-checkout', { body: JSON.stringify({ store_id: config.id, price: 40000, title: "Suscripción Plan Profesional", domain_url: window.location.origin }), headers: { "Content-Type": "application/json" } }); if (error) throw new Error(error.message || "Falló la función"); if (data?.init_point) window.open(data.init_point, '_blank'); else alert("Mercado Pago no devolvió el link."); } catch (err) { alert("Error de conexión."); } finally { if (btn) btn.innerText = "Pasarme a PRO"; } };
+  const handleSubscribe = async () => { if (!config?.id) return alert("Error: No se identificó la tienda."); const btn = document.activeElement; if (btn) btn.innerText = "Procesando..."; try { const { data, error } = await supabase.functions.invoke('create-checkout', { body: JSON.stringify({ store_id: config.id, price: 40000, title: "Suscripción Plan Profesional", domain_url: window.location.origin }), headers: { "Content-Type": "application/json" } }); if (error) throw new Error(error.message || "Falló la función"); if (data?.init_point) window.open(data.init_point, '_blank'); else alert("Mercado Pago no devolvió el link."); } catch { alert("Error de conexión."); } finally { if (btn) btn.innerText = "Pasarme a PRO"; } };
   const exportCustomers = () => { if (customers.length === 0) return alert("No hay datos."); const headers = ["Cliente", "Telefono", "Pedidos Totales", "Inversion Total", "Ultima Compra"]; const csvContent = [headers.join(';'), ...customers.map(c => [`"${c.customer_name || 'Sin Nombre'}"`, `"${c.customer_phone || ''}"`, c.total_orders, c.total_spent, `"${new Date(c.last_order).toLocaleDateString()}"`].join(';'))].join('\r\n'); const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", `clientes_${config.slug}_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); };
   
   const saveOrderChanges = async (e) => { e.preventDefault(); await supabase.from('orders').update({ customer_name: editingOrder.customer_name, total: parseFloat(editingOrder.total), payment_method: editingOrder.payment_method, status: editingOrder.status, note: editingOrder.note }).eq('id', editingOrder.id); setShowEditOrderModal(false); fetchHistory(); fetchOrders(); };
@@ -1287,11 +1130,11 @@ export default function AdminGastronomy() {
       )}
 
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] overflow-y-auto"><div className="bg-[#1a1a1a] p-6 rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl relative my-8"><button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button><h2 className="text-white font-bold text-xl mb-4">Nuevo Producto</h2><form onSubmit={handleCreateProduct} className="space-y-4"><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Nombre" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} /><textarea className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white h-20 resize-none" placeholder="Descripción" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} /><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Categoría" value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} /><div className="border-2 border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center text-gray-500 hover:border-white/30 transition-colors cursor-pointer relative">{uploadingImage ? <Loader2 className="animate-spin text-white" /> : <CloudUpload size={24} />}<span className="text-xs mt-2">{newProduct.image ? "Imagen cargada" : "Subir Foto"}</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} /></div><div className="bg-white/5 p-3 rounded-xl"><div className="flex items-center justify-between mb-2"><label className="text-sm font-bold flex items-center gap-2"><Layers size={16} /> ¿Tiene Variantes?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={newProduct.has_variants} onChange={e => setNewProduct({ ...newProduct, has_variants: e.target.checked })} /></div>{!newProduct.has_variants && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Precio Único" type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} />)}</div><div className="bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2 mb-2"><Plus size={16} /> Extras (Opcional)</label><div className="flex gap-2 mb-2"><input className="flex-1 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="Ej: Bacon" value={tempExtra.name} onChange={e => setTempExtra({ ...tempExtra, name: e.target.value })} /><input className="w-20 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="$" type="number" value={tempExtra.price} onChange={e => setTempExtra({ ...tempExtra, price: e.target.value })} /><button type="button" onClick={() => handleAddExtra(false)} className="bg-white/10 p-2 rounded-lg hover:bg-white/20"><Plus size={16} /></button></div><div className="flex flex-wrap gap-2">{newProduct.extras.map((ex, i) => (<span key={i} className="bg-black/40 border border-white/10 px-2 py-1 rounded text-xs flex items-center gap-1">{ex.name} (${ex.price}) <button type="button" onClick={() => handleRemoveExtra(i, false)}><X size={12} /></button></span>))}</div></div><div className="flex items-center justify-between bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2"><Infinity size={16} /> ¿Stock Infinito?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={newProduct.has_infinite_stock} onChange={e => setNewProduct({ ...newProduct, has_infinite_stock: e.target.checked })} /></div>{!newProduct.has_infinite_stock && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Cantidad Stock" type="number" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} />)}<div className="flex gap-2 mt-4"><button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 bg-gray-700 py-3 rounded-xl font-bold">Cancelar</button><button type="submit" className="flex-1 py-3 rounded-xl font-bold" style={{ backgroundColor: accentColor, color: contrastTextColor }}>Guardar</button></div></form></div></div>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] overflow-y-auto"><div className="bg-[#1a1a1a] p-6 rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl relative my-8"><button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button><h2 className="text-white font-bold text-xl mb-4">Nuevo Producto</h2><form onSubmit={handleCreateProduct} className="space-y-4"><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Nombre" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} /><textarea className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white h-20 resize-none" placeholder="Descripción" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} /><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Categoría" value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} /><div className="border-2 border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center text-gray-500 hover:border-white/30 transition-colors cursor-pointer relative">{uploadingImage ? <Loader2 className="animate-spin text-white" /> : <CloudUpload size={24} />}<span className="text-xs mt-2">{newProduct.image ? "Imagen cargada" : "Subir Foto"}</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageUpload} /></div><div className="bg-white/5 p-3 rounded-xl"><div className="flex items-center justify-between mb-2"><label className="text-sm font-bold flex items-center gap-2"><Layers size={16} /> ¿Tiene Variantes?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={newProduct.has_variants} onChange={e => setNewProduct({ ...newProduct, has_variants: e.target.checked })} /></div>{!newProduct.has_variants && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Precio Único" type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} />)}</div><div className="bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2 mb-2"><Plus size={16} /> Extras (Opcional)</label><div className="flex gap-2 mb-2"><input className="flex-1 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="Ej: Bacon" value={tempExtra.name} onChange={e => setTempExtra({ ...tempExtra, name: e.target.value })} /><input className="w-20 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="$" type="number" value={tempExtra.price} onChange={e => setTempExtra({ ...tempExtra, price: e.target.value })} /><button type="button" onClick={() => handleAddExtra(false)} className="bg-white/10 p-2 rounded-lg hover:bg-white/20"><Plus size={16} /></button></div><div className="flex flex-wrap gap-2">{newProduct.extras.map((ex, i) => (<span key={i} className="bg-black/40 border border-white/10 px-2 py-1 rounded text-xs flex items-center gap-1">{ex.name} (${ex.price}) <button type="button" onClick={() => handleRemoveExtra(i, false)}><X size={12} /></button></span>))}</div></div><div className="flex items-center justify-between bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2"><InfinityIcon size={16} /> ¿Stock Infinito?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={newProduct.has_infinite_stock} onChange={e => setNewProduct({ ...newProduct, has_infinite_stock: e.target.checked })} /></div>{!newProduct.has_infinite_stock && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" placeholder="Cantidad Stock" type="number" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} />)}<div className="flex gap-2 mt-4"><button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 bg-gray-700 py-3 rounded-xl font-bold">Cancelar</button><button type="submit" className="flex-1 py-3 rounded-xl font-bold" style={{ backgroundColor: accentColor, color: contrastTextColor }}>Guardar</button></div></form></div></div>
       )}
 
       {showEditProductModal && editingProduct && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] overflow-y-auto"><div className="bg-[#1a1a1a] p-6 rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl relative my-8"><button onClick={() => setShowEditProductModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button><h2 className="text-white font-bold text-xl mb-4">Editar Producto</h2><form onSubmit={handleUpdateProduct} className="space-y-4"><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" value={editingProduct.name} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} /><textarea className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white h-20 resize-none" value={editingProduct.description} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" value={editingProduct.category} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /><div className="border-2 border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center text-gray-500 hover:border-white/30 transition-colors cursor-pointer relative">{uploadingImage ? <Loader2 className="animate-spin text-white" /> : <CloudUpload size={24} />}<span className="text-xs mt-2">Cambiar Foto</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, true)} /></div><div className="bg-white/5 p-3 rounded-xl"><div className="flex items-center justify-between mb-2"><label className="text-sm font-bold flex items-center gap-2"><Layers size={16} /> ¿Tiene Variantes?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={editingProduct.has_variants} onChange={e => setEditingProduct({ ...editingProduct, has_variants: e.target.checked })} /></div>{!editingProduct.has_variants && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" type="number" value={editingProduct.price} onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })} />)}</div><div className="bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2 mb-2"><Plus size={16} /> Extras</label><div className="flex gap-2 mb-2"><input className="flex-1 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="Ej: Bacon" value={tempExtra.name} onChange={e => setTempExtra({ ...tempExtra, name: e.target.value })} /><input className="w-20 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="$" type="number" value={tempExtra.price} onChange={e => setTempExtra({ ...tempExtra, price: e.target.value })} /><button type="button" onClick={() => handleAddExtra(true)} className="bg-white/10 p-2 rounded-lg hover:bg-white/20"><Plus size={16} /></button></div><div className="flex flex-wrap gap-2">{(editingProduct.extras || []).map((ex, i) => (<span key={i} className="bg-black/40 border border-white/10 px-2 py-1 rounded text-xs flex items-center gap-1">{ex.name} (${ex.price}) <button type="button" onClick={() => handleRemoveExtra(i, true)}><X size={12} /></button></span>))}</div></div><div className="flex items-center justify-between bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2"><Infinity size={16} /> ¿Stock Infinito?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={editingProduct.has_infinite_stock} onChange={e => setEditingProduct({ ...editingProduct, has_infinite_stock: e.target.checked })} /></div>{!editingProduct.has_infinite_stock && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" type="number" value={editingProduct.stock} onChange={e => setEditingProduct({ ...editingProduct, stock: e.target.value })} />)}<button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold mt-4">Guardar Cambios</button></form></div></div>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] overflow-y-auto"><div className="bg-[#1a1a1a] p-6 rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl relative my-8"><button onClick={() => setShowEditProductModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button><h2 className="text-white font-bold text-xl mb-4">Editar Producto</h2><form onSubmit={handleUpdateProduct} className="space-y-4"><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" value={editingProduct.name} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} /><textarea className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white h-20 resize-none" value={editingProduct.description} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} /><input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" value={editingProduct.category} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} /><div className="border-2 border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center text-gray-500 hover:border-white/30 transition-colors cursor-pointer relative">{uploadingImage ? <Loader2 className="animate-spin text-white" /> : <CloudUpload size={24} />}<span className="text-xs mt-2">Cambiar Foto</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, true)} /></div><div className="bg-white/5 p-3 rounded-xl"><div className="flex items-center justify-between mb-2"><label className="text-sm font-bold flex items-center gap-2"><Layers size={16} /> ¿Tiene Variantes?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={editingProduct.has_variants} onChange={e => setEditingProduct({ ...editingProduct, has_variants: e.target.checked })} /></div>{!editingProduct.has_variants && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" type="number" value={editingProduct.price} onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })} />)}</div><div className="bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2 mb-2"><Plus size={16} /> Extras</label><div className="flex gap-2 mb-2"><input className="flex-1 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="Ej: Bacon" value={tempExtra.name} onChange={e => setTempExtra({ ...tempExtra, name: e.target.value })} /><input className="w-20 bg-black/50 border border-white/10 p-2 rounded-lg text-sm text-white" placeholder="$" type="number" value={tempExtra.price} onChange={e => setTempExtra({ ...tempExtra, price: e.target.value })} /><button type="button" onClick={() => handleAddExtra(true)} className="bg-white/10 p-2 rounded-lg hover:bg-white/20"><Plus size={16} /></button></div><div className="flex flex-wrap gap-2">{(editingProduct.extras || []).map((ex, i) => (<span key={i} className="bg-black/40 border border-white/10 px-2 py-1 rounded text-xs flex items-center gap-1">{ex.name} (${ex.price}) <button type="button" onClick={() => handleRemoveExtra(i, true)}><X size={12} /></button></span>))}</div></div><div className="flex items-center justify-between bg-white/5 p-3 rounded-xl"><label className="text-sm font-bold flex items-center gap-2"><InfinityIcon size={16} /> ¿Stock Infinito?</label><input type="checkbox" className="w-5 h-5 accent-orange-500" checked={editingProduct.has_infinite_stock} onChange={e => setEditingProduct({ ...editingProduct, has_infinite_stock: e.target.checked })} /></div>{!editingProduct.has_infinite_stock && (<input className="w-full bg-black/50 border border-white/10 p-3 rounded-xl text-white" type="number" value={editingProduct.stock} onChange={e => setEditingProduct({ ...editingProduct, stock: e.target.value })} />)}<button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold mt-4">Guardar Cambios</button></form></div></div>
       )}
 
       {showPromoModal && promoTargetItem && (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
-import { useStore } from '../context/StoreContext';
+import { useStore } from '../context/useStore';
 
 export function useMenuData() {
   const { store } = useStore();

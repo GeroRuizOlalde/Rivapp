@@ -1,5 +1,5 @@
 import React from 'react';
-import { useStore } from '../context/StoreContext';
+import { useStore } from '../context/useStore';
 import GastronomyHome from './GastronomyHome';
 import BookingHome from './BookingHome';
 import BranchSelector from '../components/shared/BranchSelector';

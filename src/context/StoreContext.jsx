@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
 import { useLocation } from 'react-router-dom';
 import { logger } from '../utils/logger';
-
-const StoreContext = createContext();
+import { StoreContext } from './store-context';
 
 export const StoreProvider = ({ children }) => {
   const [store, setStore] = useState(null);
@@ -178,5 +177,3 @@ export const StoreProvider = ({ children }) => {
     </StoreContext.Provider>
   );
 };
-
-export const useStore = () => useContext(StoreContext);

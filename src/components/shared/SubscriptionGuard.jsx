@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useStore } from '../../context/StoreContext';
+import { useStore } from '../../context/useStore';
 import { useEntitlements } from '../../hooks/useEntitlements';
 import { supabase } from '../../supabase/client';
 import { Navigate, useLocation } from 'react-router-dom';

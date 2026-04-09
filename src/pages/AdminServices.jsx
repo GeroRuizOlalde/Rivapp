@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../supabase/client';
-import { useStore } from '../context/StoreContext';
+import { useStore } from '../context/useStore';
 import { useEntitlements } from '../hooks/useEntitlements';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -57,8 +57,7 @@ export default function AdminServices() {
   const [appointments, setAppointments] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [coupons, setCoupons] = useState([]); 
-  const [loadingApts, setLoadingApts] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [, setUploading] = useState(false);
   const [flash, setFlash] = useState(false);
 
   // --- SONIDO ---
@@ -97,7 +96,7 @@ export default function AdminServices() {
   const [editingService, setEditingService] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null);
 
-  const [globalNotifications, setGlobalNotifications] = useState([]);
+  const [, setGlobalNotifications] = useState([]);
   const [activeAlert, setActiveAlert] = useState(null);
   const [dismissedMessages, setDismissedMessages] = useState(() => {
     const saved = localStorage.getItem('rivapp_dismissed_turnos_msgs');
@@ -107,32 +106,32 @@ export default function AdminServices() {
   const accentColor = store?.color_accent || '#2563eb';
 
   // 1. CONTROL DE SONIDO
-  const playAudioElement = () => {
+  const playAudioElement = useCallback(() => {
       const audio = document.getElementById('notification-audio');
       if (audio) {
           audio.currentTime = 0;
-          audio.play().catch(e => console.warn("🔇 Audio bloqueado. Interactúa con la página primero."));
+          audio.play().catch(() => console.warn("🔇 Audio bloqueado. Interactúa con la página primero."));
       }
-  };
+  }, []);
 
-  const toggleSound = () => {
+  const toggleSound = useCallback(() => {
       const newState = !isSoundEnabled;
       setIsSoundEnabled(newState);
       soundEnabledRef.current = newState; 
       if (newState) playAudioElement();
-  };
+  }, [isSoundEnabled, playAudioElement]);
 
-  const playNotification = () => {
+  const playNotification = useCallback(() => {
     setFlash(true);
     setTimeout(() => setFlash(false), 1000);
     if (soundEnabledRef.current) { 
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         playAudioElement();
     }
-  };
+  }, [playAudioElement]);
 
   // 2. CARGA DE DATOS
-  const fetchAppointments = async () => { 
+  const fetchAppointments = useCallback(async () => { 
       if (!store?.id) return;
       
       const { data } = await supabase
@@ -153,45 +152,104 @@ export default function AdminServices() {
         }
         prevAppointmentsCount.current = currentCount;
       }
-  };
+  }, [playNotification, store]);
+
+  const fetchServices = useCallback(async () => {
+    if (!store?.id) return;
+    const { data } = await supabase.from('services').select('*').eq('store_id', store.id).order('name');
+    if (data) setServices(data);
+  }, [store]);
+
+  const fetchStaff = useCallback(async () => {
+    if (!store?.id) return;
+    const { data } = await supabase.from('staff').select('*').eq('store_id', store.id).eq('active', true);
+    if (data) setStaffList(data);
+  }, [store]);
+
+  const fetchSchedules = useCallback(async () => {
+    if (!store?.id) return;
+    const { data } = await supabase.from('store_schedules').select('*').eq('store_id', store.id).order('day_of_week');
+    if (!data || data.length === 0) {
+      setSchedules(DAYS.map((_, index) => ({ day_of_week: index, open_time: '09:00:00', close_time: '20:00:00', is_closed: index === 0 })));
+    } else {
+      setSchedules(data);
+    }
+  }, [store]);
+
+  const fetchCoupons = useCallback(async () => {
+    if (!store?.id) return;
+    const { data } = await supabase.from('coupons').select('*').eq('store_id', store.id).eq('active', true);
+    if (data) setCoupons(data);
+  }, [store]);
+
+  const fetchGlobalNotifications = useCallback(async () => {
+    const { data } = await supabase.from('global_notifications').select('*').eq('is_active', true).or('target.eq.all,target.eq.turnos').order('created_at', { ascending: false });
+    if (data && data.length > 0) {
+      const filtered = data.filter((notification) => !dismissedMessages.includes(notification.id));
+      setGlobalNotifications(filtered);
+      if (filtered.length > 0) setActiveAlert(filtered[0]);
+    }
+  }, [dismissedMessages]);
+
+  const refreshAllData = useCallback(() => {
+    void fetchServices();
+    void fetchStaff();
+    void fetchAppointments();
+    void fetchSchedules();
+    void fetchCoupons();
+  }, [fetchAppointments, fetchCoupons, fetchSchedules, fetchServices, fetchStaff]);
+
+  const dismissMessage = useCallback((id) => {
+    const updated = [...dismissedMessages, id];
+    setDismissedMessages(updated);
+    localStorage.setItem('rivapp_dismissed_turnos_msgs', JSON.stringify(updated));
+    setGlobalNotifications((prev) => prev.filter((notification) => notification.id !== id));
+    if (activeAlert?.id === id) setActiveAlert(null);
+  }, [activeAlert, dismissedMessages]);
 
   useEffect(() => {
     if (!store) return;
-    
-    setProfileForm({
-        name: store.name || '', phone: store.phone || '', address: store.address || '', 
-        logo_url: store.logo_url || '', banner_url: store.banner_url || '', 
-        color_accent: store.color_accent || '#2563eb',
-        enable_staff_selection: store.enable_staff_selection ?? true, enable_payments: store.enable_payments ?? false,
-        mp_public_key: store.mp_public_key || '', mp_access_token: store.mp_access_token || ''
-    });
-    setSlotsConfig({ enable_multislots: store.enable_multislots || false, max_concurrent_slots: store.max_concurrent_slots || 1 });
 
-    refreshAllData();
-    fetchGlobalNotifications();
+    const syncStoreStateTimeout = window.setTimeout(() => {
+      setProfileForm({
+        name: store.name || '',
+        phone: store.phone || '',
+        address: store.address || '',
+        logo_url: store.logo_url || '',
+        banner_url: store.banner_url || '',
+        color_accent: store.color_accent || '#2563eb',
+        enable_staff_selection: store.enable_staff_selection ?? true,
+        enable_payments: store.enable_payments ?? false,
+        mp_public_key: store.mp_public_key || '',
+        mp_access_token: store.mp_access_token || ''
+      });
+      setSlotsConfig({ enable_multislots: store.enable_multislots || false, max_concurrent_slots: store.max_concurrent_slots || 1 });
+    }, 0);
+
+    const initialLoadTimeout = window.setTimeout(() => {
+      refreshAllData();
+      void fetchGlobalNotifications();
+    }, 0);
 
     const channel = supabase.channel('admin_services_realtime')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'appointments', filter: `store_id=eq.${store.id}` }, 
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments', filter: `store_id=eq.${store.id}` },
         (payload) => {
-            fetchAppointments(); 
-            if (payload.eventType === 'INSERT') {
-                playNotification();
-            }
+          void fetchAppointments();
+          if (payload.eventType === 'INSERT') {
+            playNotification();
+          }
         }
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [store]);
-
-  const refreshAllData = () => { fetchServices(); fetchStaff(); fetchAppointments(); fetchSchedules(); fetchCoupons(); };
-  const fetchServices = async () => { const { data } = await supabase.from('services').select('*').eq('store_id', store.id).order('name'); if (data) setServices(data); };
-  const fetchStaff = async () => { const { data } = await supabase.from('staff').select('*').eq('store_id', store.id).eq('active', true); if (data) setStaffList(data); };
-  const fetchSchedules = async () => { const { data } = await supabase.from('store_schedules').select('*').eq('store_id', store.id).order('day_of_week'); if (!data || data.length === 0) { setSchedules(DAYS.map((_, i) => ({ day_of_week: i, open_time: '09:00:00', close_time: '20:00:00', is_closed: i === 0 }))); } else { setSchedules(data); } };
-  const fetchCoupons = async () => { const { data } = await supabase.from('coupons').select('*').eq('store_id', store.id).eq('active', true); if(data) setCoupons(data); };
-  const fetchGlobalNotifications = async () => { const { data } = await supabase.from('global_notifications').select('*').eq('is_active', true).or(`target.eq.all,target.eq.turnos`).order('created_at', { ascending: false }); if (data && data.length > 0) { const filtered = data.filter(n => !dismissedMessages.includes(n.id)); setGlobalNotifications(filtered); if (filtered.length > 0) setActiveAlert(filtered[0]); } };
-  const dismissMessage = (id) => { const updated = [...dismissedMessages, id]; setDismissedMessages(updated); localStorage.setItem('rivapp_dismissed_turnos_msgs', JSON.stringify(updated)); setGlobalNotifications(prev => prev.filter(n => n.id !== id)); if (activeAlert?.id === id) setActiveAlert(null); };
+    return () => {
+      window.clearTimeout(syncStoreStateTimeout);
+      window.clearTimeout(initialLoadTimeout);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchAppointments, fetchGlobalNotifications, playNotification, refreshAllData, store]);
 
   const pendingAppointments = useMemo(() => appointments.filter(a => a.status === 'pendiente'), [appointments]);
   const filteredAppointments = useMemo(() => appointments.filter(a => isSameDay(new Date(a.start_time), selectedDate) && a.status === 'confirmado'), [appointments, selectedDate]);

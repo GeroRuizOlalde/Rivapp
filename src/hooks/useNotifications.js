@@ -27,7 +27,9 @@ export function useNotifications(storeId, { soundEnabled = false } = {}) {
   // Escuchar nuevas notificaciones en tiempo real
   useEffect(() => {
     if (!storeId) return;
-    fetchNotifications();
+    void (async () => {
+      await fetchNotifications();
+    })();
 
     const channel = supabase.channel(`store_notif_${storeId}`)
       .on('postgres_changes', {
@@ -126,5 +128,7 @@ function playSound() {
     const audio = new Audio('/sounds/notification.mp3');
     audio.volume = 0.5;
     audio.play().catch(() => {});
-  } catch {}
+  } catch {
+    // noop
+  }
 }

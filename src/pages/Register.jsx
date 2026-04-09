@@ -5,13 +5,11 @@ import {
   Store, Mail, Lock, ArrowRight, Loader2, CheckCircle, 
   AlertTriangle, Utensils, Scissors, Globe 
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { appConfig } from '../config/appConfig';
 
 export default function Register() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); 
   const [error, setError] = useState(null);
 
   // Formulario

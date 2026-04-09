@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useStore } from '../context/StoreContext';
+import { useStore } from '../context/useStore';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { logger } from '../utils/logger';
 

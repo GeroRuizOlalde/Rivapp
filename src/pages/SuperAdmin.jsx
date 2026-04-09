@@ -19,7 +19,6 @@ export default function SuperAdmin() {
   
   // Datos
   const [stores, setStores] = useState([]);
-  const [plans, setPlans] = useState([]);
   const [payments, setPayments] = useState([]);
   const [globalNotifications, setGlobalNotifications] = useState([]); 
   
@@ -56,12 +55,10 @@ export default function SuperAdmin() {
   const fetchAllData = async () => {
     setLoading(true);
     const { data: storesData } = await supabase.from('stores').select('*, orders(count), appointments(count)').order('created_at', { ascending: false });
-    const { data: plansData } = await supabase.from('platform_plans').select('*');
     const { data: paymentsData } = await supabase.from('subscription_payments').select('*, stores(name)').order('created_at', { ascending: false });
     const { data: notifyData } = await supabase.from('global_notifications').select('*').order('created_at', { ascending: false });
     
     if (storesData) setStores(storesData);
-    if (plansData) setPlans(plansData);
     if (paymentsData) setPayments(paymentsData);
     if (notifyData) setGlobalNotifications(notifyData);
     setLoading(false);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase/client';
-import { useStore } from '../context/StoreContext'; 
+import { useStore } from '../context/useStore'; 
 import { useNavigate } from 'react-router-dom'; 
 
 import { useCartStore } from "../store/useCartStore";
@@ -116,7 +116,18 @@ const LocationPicker = ({ onLocationSelect, storeLocation, initialPosition }) =>
       } else { setLoadingGPS(false); } 
   };
 
-  useEffect(() => { if (initialPosition) { setPosition(initialPosition); onLocationSelect(initialPosition); } }, [initialPosition]);
+  useEffect(() => {
+    if (!initialPosition) return;
+
+    const syncInitialPositionTimeout = window.setTimeout(() => {
+      setPosition(initialPosition);
+      onLocationSelect(initialPosition);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(syncInitialPositionTimeout);
+    };
+  }, [initialPosition, onLocationSelect]);
 
   return ( 
     <div className="space-y-2">
@@ -167,6 +178,38 @@ const ProductCard = ({ item, isOpen, onAdd, color }) => {
             </div>
         </div>
     </div> 
+  );
+};
+
+const CartSummaryButton = ({ count, total, isStoreOpen, onOpen, color }) => {
+  if (count === 0) return null;
+
+  return (
+    <div className="fixed bottom-4 left-0 right-0 px-4 z-50 flex justify-center pointer-events-none">
+      <button
+        onClick={onOpen}
+        disabled={!isStoreOpen}
+        className={`pointer-events-auto w-full max-w-md h-14 rounded-xl font-bold text-lg shadow-xl flex items-center justify-between px-6 transition-all active:scale-95 ${
+          isStoreOpen ? 'text-black' : 'bg-gray-600 text-gray-300'
+        }`}
+        style={isStoreOpen ? { backgroundColor: color || '#d0ff00' } : {}}
+      >
+        {isStoreOpen ? (
+          <>
+            <div className="flex items-center gap-3">
+              <span className="bg-black/20 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-black">{count}</span>
+              <span>Ver Pedido</span>
+            </div>
+            <span>${total.toLocaleString()}</span>
+          </>
+        ) : (
+          <div className="flex items-center justify-center w-full gap-2">
+            <Lock size={20} />
+            <span>Cerrado</span>
+          </div>
+        )}
+      </button>
+    </div>
   );
 };
 
@@ -255,9 +298,11 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
   const [copied, setCopied] = useState(false);
 
   // Usamos la lat/lng de la SUCURSAL si existe, sino la del STORE, sino Default
-  const storeLoc = selectedBranch?.lat && selectedBranch?.lng 
-      ? { lat: selectedBranch.lat, lng: selectedBranch.lng }
-      : (config?.lat ? { lat: config.lat, lng: config.lng } : DEFAULT_COORDS);
+  const storeLoc = useMemo(() => (
+      selectedBranch?.lat && selectedBranch?.lng
+        ? { lat: selectedBranch.lat, lng: selectedBranch.lng }
+        : (config?.lat ? { lat: config.lat, lng: config.lng } : DEFAULT_COORDS)
+  ), [config?.lat, config?.lng, selectedBranch?.lat, selectedBranch?.lng]);
 
   const brandColor = config?.color_accent || '#d0ff00';
 
@@ -601,7 +646,7 @@ export default function GastronomyHome() {
             : "Pago en proceso. Te avisaremos cuando se confirme.");
           clearCart();
       }
-  }, []);
+  }, [clearCart]);
 
   const isStoreOpen = useMemo(() => {
     if (!isOpen) return false;
@@ -616,7 +661,7 @@ export default function GastronomyHome() {
   }, [isOpen, config]);
 
   const [activeCategory, setActiveCategory] = useState("Todos");
-  const [orderType, setOrderType] = useState("delivery"); 
+  const orderType = "delivery";
   const [searchTerm, setSearchTerm] = useState("");
   const [showCartModal, setShowCartModal] = useState(false);
   const [variantItem, setVariantItem] = useState(null);
@@ -652,7 +697,7 @@ export default function GastronomyHome() {
                   };
                   setUserInitialLocation(coords);
               },
-              (err) => console.log("GPS Denied"),
+              () => console.log("GPS Denied"),
               { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           );
       }
@@ -731,29 +776,8 @@ export default function GastronomyHome() {
       if (searchTerm) items = items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())); 
       return items; 
   }, [activeCategory, menuItems, searchTerm]);
-
-  const CartButton = () => {
-    const count = cart.reduce((acc, i) => acc + i.quantity, 0); 
-    const total = cart.reduce((acc, i) => acc + (parseFloat(i.finalPrice) * i.quantity), 0);
-    
-    if (count === 0) return null;
-    return ( 
-        <div className="fixed bottom-4 left-0 right-0 px-4 z-50 flex justify-center pointer-events-none">
-            <button 
-                onClick={() => isStoreOpen && setShowCartModal(true)} 
-                disabled={!isStoreOpen} 
-                className={`pointer-events-auto w-full max-w-md h-14 rounded-xl font-bold text-lg shadow-xl flex items-center justify-between px-6 transition-all active:scale-95 ${isStoreOpen ? "text-black" : "bg-gray-600 text-gray-300"}`} 
-                style={isStoreOpen ? {backgroundColor: safeConfig.color_accent || '#d0ff00'} : {}}
-            >
-                {isStoreOpen ? (
-                    <><div className="flex items-center gap-3"><span className="bg-black/20 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-black">{count}</span><span>Ver Pedido</span></div><span>${total.toLocaleString()}</span></>
-                ) : (
-                    <div className="flex items-center justify-center w-full gap-2"><Lock size={20} /><span>Cerrado</span></div>
-                )}
-            </button>
-        </div> 
-    );
-  };
+  const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const cartTotal = cart.reduce((acc, item) => acc + (parseFloat(item.finalPrice) * item.quantity), 0);
 
   if (loading || statusLoading || loadingConfig) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-white" size={48}/></div>;
 
@@ -806,7 +830,13 @@ export default function GastronomyHome() {
                 </footer>
             </div>
 
-            <CartButton />
+            <CartSummaryButton
+                count={cartItemCount}
+                total={cartTotal}
+                isStoreOpen={isStoreOpen}
+                onOpen={() => isStoreOpen && setShowCartModal(true)}
+                color={safeConfig.color_accent}
+            />
             <StatusTracker order={activeOrder} onClose={handleCloseTracker} />
             
             <AnimatePresence>
