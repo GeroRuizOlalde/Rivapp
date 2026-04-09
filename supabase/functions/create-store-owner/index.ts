@@ -40,6 +40,18 @@ serve(async (req) => {
 
     if (createError) {
       console.error("LOG ERROR SUPABASE AUTH:", createError.message);
+
+      // Si el usuario ya existe, buscarlo y devolver su ID
+      if (createError.message?.includes('already been registered') || createError.message?.includes('already exists')) {
+        console.log("LOG: Usuario ya existe, buscando ID...");
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = listData?.users?.find((u: any) => u.email === email);
+        if (existingUser) {
+          console.log("LOG: Usuario existente encontrado:", existingUser.id);
+          return new Response(JSON.stringify({ user_id: existingUser.id, existing: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
       return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

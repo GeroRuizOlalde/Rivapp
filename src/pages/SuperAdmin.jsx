@@ -102,7 +102,11 @@ export default function SuperAdmin() {
                 }
             });
 
-            if (funcError) throw new Error("Error creando usuario: " + funcError.message);
+            if (funcError) {
+                // Intentar extraer el mensaje real del body de la respuesta
+                const detail = funcData?.error || funcError.message;
+                throw new Error("Error creando usuario: " + detail);
+            }
             newOwnerId = funcData?.user_id;
         } else {
             logger.debug("Sin email: creando tienda demo huerfana");
