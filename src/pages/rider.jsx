@@ -105,7 +105,7 @@ export default function Rider() {
   };
 
   const notifyCustomer = (order) => {
-    const message = `Hola ${order.customer_name}, soy ${riderInfo.name} de ${store.name} 🛵. Ya estoy en camino con tu pedido. ¡Nos vemos en unos minutos!`;
+    const message = `Hola ${order.customer_name}, soy ${riderInfo.name} de ${store.name} \u{1F6F5}. Ya estoy en camino con tu pedido. \u00A1Nos vemos en unos minutos!`;
     window.open(`https://wa.me/${order.customer_phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
