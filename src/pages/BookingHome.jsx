@@ -405,7 +405,7 @@ export default function BookingHome() {
                         <h3 className="text-sm font-bold text-white uppercase tracking-widest">Forma de Pago</h3>
                         <div className="flex gap-3">
                             <PaymentOption id="mercadopago" icon={CreditCard} label="Mercado Pago" selected={paymentMethod} onSelect={setPaymentMethod} color={brandColor} customColor="#009EE3"/>
-                            <PaymentOption id="local" icon={Banknote} label="En el Local" selected={paymentMethod} onSelect={setPaymentMethod} color={brandColor}/>
+                            <PaymentOption id="cash" icon={Banknote} label="En el Local" selected={paymentMethod} onSelect={setPaymentMethod} color={brandColor}/>
                         </div>
                         <AnimatePresence>
                             {paymentMethod === 'mercadopago' && (
