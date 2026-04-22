@@ -24,9 +24,9 @@
   --color-rule-strong: rgba(247, 245, 238, 0.22);
   --color-rule-paper: rgba(21, 20, 15, 0.14);
 
-  --font-display: "Instrument Serif", ui-serif, Georgia, Cambria, "Times New Roman", serif;
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-display: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   --radius-xs: 4px;
   --radius-sm: 8px;
@@ -87,16 +87,16 @@
 
   .display {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.03em;
+    font-weight: 800;
+    letter-spacing: -0.04em;
     line-height: 0.95;
   }
 
   .display-italic {
     font-family: var(--font-display);
     font-style: italic;
-    font-weight: 400;
-    letter-spacing: -0.025em;
+    font-weight: 500;
+    letter-spacing: -0.02em;
   }
 
   .mono {
