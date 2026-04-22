@@ -513,9 +513,9 @@ export default function Landing() {
 
       <main className="relative z-10">
         {/* Hero */}
-        <section className="px-6 pb-24 pt-32 md:pb-32 md:pt-40">
+        <section className="px-6 pb-20 pt-24 md:pb-28 md:pt-28">
           <div className="mx-auto max-w-7xl">
-            <div className="mb-10 flex items-center justify-between anim-rise">
+            <div className="mb-8 flex items-center justify-between anim-rise">
               <Eyebrow>
                 <Hash className="h-3 w-3" />
                 Edición № 042 · Abril 2026
@@ -525,9 +525,9 @@ export default function Landing() {
               </Eyebrow>
             </div>
 
-            <div className="grid gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+            <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-12">
               <div>
-                <h1 className="display anim-rise text-text text-[clamp(3.5rem,9vw,8.5rem)] leading-[0.92]">
+                <h1 className="display anim-rise text-text text-[clamp(2.75rem,6.5vw,6rem)] leading-[0.95]">
                   Tu negocio<br />
                   <em className="display-italic">online,</em> sin<br />
                   <span className="relative inline-block text-acid">
@@ -549,7 +549,7 @@ export default function Landing() {
                   .
                 </h1>
 
-                <div className="anim-rise d-2 mt-12 grid max-w-xl gap-6">
+                <div className="anim-rise d-2 mt-8 grid max-w-xl gap-6">
                   <p className="text-lg leading-8 text-text-muted text-pretty md:text-xl">
                     Rivapp reemplaza el caos de WhatsApp, planillas y cuaderno con una experiencia pública
                     <em className="display-italic text-text"> profesional</em> y un panel interno listo para
@@ -566,7 +566,7 @@ export default function Landing() {
                   </div>
                 </div>
 
-                <div className="anim-rise d-3 mt-14 grid max-w-xl grid-cols-2 gap-10 border-t border-rule pt-8">
+                <div className="anim-rise d-3 mt-10 grid max-w-xl grid-cols-2 gap-10 border-t border-rule pt-6">
                   <div>
                     <p className="num text-4xl text-text">0%</p>
                     <p className="mono mt-1 text-[11px] uppercase tracking-[0.2em] text-text-subtle">
@@ -582,7 +582,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <div className="anim-rise d-4 lg:pt-10">
+              <div className="anim-rise d-4">
                 <HeroConsole />
               </div>
             </div>
