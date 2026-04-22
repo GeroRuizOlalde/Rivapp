@@ -1,35 +1,55 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase/client';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { logger } from '../utils/logger';
-import { 
-  Store, Mail, Lock, ArrowRight, Loader2, CheckCircle, 
-  AlertTriangle, Utensils, Scissors, Globe 
+import {
+  Store, Mail, Lock, ArrowRight, ArrowLeft, Loader2, AlertTriangle,
+  Utensils, Scissors, Globe, Sparkles, Hash, Check,
 } from 'lucide-react';
 import { appConfig } from '../config/appConfig';
+import Button from '../components/shared/ui/Button';
+import Field from '../components/shared/ui/Field';
+import Eyebrow from '../components/shared/ui/Eyebrow';
+import Rule from '../components/shared/ui/Rule';
+
+const verticalOptions = [
+  {
+    key: 'gastronomia',
+    icon: Utensils,
+    label: 'Gastronomía',
+    subtitle: 'Pedidos · Delivery · Retiro',
+    features: ['Menú digital', 'Checkout público', 'Delivery propio'],
+  },
+  {
+    key: 'turnos',
+    icon: Scissors,
+    label: 'Turnos & Servicios',
+    subtitle: 'Agenda · Staff · Reservas',
+    features: ['Reserva pública', 'Staff y horarios', 'Confirmación clara'],
+  },
+];
 
 export default function Register() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Formulario
   const [form, setForm] = useState({
     storeName: '',
     slug: '',
-    type: 'gastronomia', // 'gastronomia' o 'turnos'
+    type: 'gastronomia',
     email: '',
-    password: ''
+    password: '',
   });
 
-  // Generador automático de URL (Slug)
   const handleNameChange = (e) => {
     const name = e.target.value;
-    const generatedSlug = name.toLowerCase()
+    const generatedSlug = name
+      .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .trim()
       .replace(/\s+/g, '-');
-    
     setForm({ ...form, storeName: name, slug: generatedSlug });
   };
 
@@ -39,7 +59,6 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // 1. Verificar si el SLUG ya existe
       const { data: existingStore } = await supabase
         .from('stores')
         .select('id')
@@ -47,199 +66,313 @@ export default function Register() {
         .single();
 
       if (existingStore) {
-        throw new Error("⚠️ Esa URL (slug) ya está en uso. Prueba con otro nombre.");
+        throw new Error('Esa URL (slug) ya está en uso. Probá con otro nombre.');
       }
 
-      // 2. Crear Usuario en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error("No se pudo crear el usuario.");
+      if (!authData.user) throw new Error('No se pudo crear el usuario.');
 
-      // 3. Crear la Tienda en la Base de Datos
       const { error: storeError } = await supabase.from('stores').insert([
         {
           owner_id: authData.user.id,
           name: form.storeName,
           slug: form.slug,
           business_type: form.type,
-          plan_type: 'trial', 
+          plan_type: 'trial',
           subscription_status: 'active',
-          subscription_expiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 días gratis
-          is_active: true
-        }
+          subscription_expiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          is_active: true,
+        },
       ]);
 
       if (storeError) throw storeError;
 
-      // 4. Guardar sesión local
-      localStorage.setItem('rivapp_session', JSON.stringify({
-        id: authData.user.id,
-        email: authData.user.email,
-        slug: form.slug
-      }));
+      localStorage.setItem(
+        'rivapp_session',
+        JSON.stringify({
+          id: authData.user.id,
+          email: authData.user.email,
+          slug: form.slug,
+        })
+      );
 
-      // 🟢 5. ENVIAR MAIL DE BIENVENIDA (Sin bloquear si falla)
       try {
         await supabase.functions.invoke('send-welcome-email', {
-          body: { 
-            email: form.email, 
+          body: {
+            email: form.email,
             storeName: form.storeName,
             slug: form.slug,
-            type: form.type === 'gastronomia' ? 'Gastronomía' : 'Turnos y Servicios'
-          }
+            type: form.type === 'gastronomia' ? 'Gastronomía' : 'Turnos y Servicios',
+          },
         });
       } catch (mailError) {
-        logger.warn("El usuario se creo, pero fallo el envio del mail:", mailError);
+        logger.warn('El usuario se creó, pero falló el envío del mail:', mailError);
       }
 
-      // 6. Redirigir al Admin correcto
-      alert("¡Cuenta creada con éxito! Te enviamos un correo de confirmación. 🚀");
+      alert('¡Cuenta creada con éxito! Te enviamos un correo de confirmación.');
       navigate(`/${form.slug}/admin`);
-
     } catch (err) {
       logger.error(err);
-      setError(err.message || "Ocurrio un error inesperado.");
+      setError(err.message || 'Ocurrió un error inesperado.');
     } finally {
       setLoading(false);
     }
   };
 
+  const activeAccent = form.type === 'gastronomia' ? 'acid' : 'ml';
+
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 relative overflow-hidden">
-      
-      {/* Fondo Decorativo */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#d0ff00]/10 rounded-full blur-[100px]"/>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px]"/>
+    <div className="relative min-h-screen overflow-hidden bg-ink text-text">
+      <div className="pointer-events-none absolute inset-0 z-0 grain" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
+        <div className="absolute left-[-10%] top-[-20%] h-[60vw] w-[60vw] rounded-full bg-acid/[0.04] blur-[140px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] h-[50vw] w-[50vw] rounded-full bg-ml/[0.06] blur-[140px]" />
       </div>
 
-      <div className="w-full max-w-md relative z-10">
-        
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-[#1a1a1a] rounded-2xl flex items-center justify-center border border-white/10 shadow-2xl">
-              <Store size={32} className="text-white"/>
+      <header className="relative z-20 border-b border-rule">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-acid text-ink">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <span className="display text-2xl">Rivapp</span>
+          </Link>
+          <Link
+            to="/login"
+            className="mono inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-text-muted hover:text-text"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Ya tengo cuenta
+          </Link>
+        </div>
+      </header>
+
+      <main className="relative z-10 mx-auto grid max-w-7xl gap-12 px-6 py-16 lg:grid-cols-[0.45fr_0.55fr] lg:gap-20 lg:py-24">
+        {/* Left · editorial */}
+        <aside className="lg:sticky lg:top-28 lg:self-start">
+          <Eyebrow>
+            <Hash className="h-3 w-3" /> Alta · Prueba gratis {14} días
+          </Eyebrow>
+          <h1 className="display mt-6 text-[clamp(3rem,7vw,6rem)] leading-[0.92]">
+            Encendé<br />
+            tu <em className="display-italic text-acid">negocio</em><br />
+            online.
+          </h1>
+          <p className="mt-8 max-w-md text-base leading-7 text-text-muted text-pretty md:text-lg">
+            En menos de una tarde tenés tu URL pública, panel interno y cobros directos a tu cuenta. Sin
+            comisiones por venta. Sin intermediarios.
+          </p>
+
+          <Rule className="mt-10" label="Lo que obtenés" />
+
+          <ul className="mt-8 grid gap-4">
+            {[
+              'URL pública en 1 minuto',
+              'Panel interno listo para operar',
+              'Cobros directos · Mercado Pago',
+              'Soporte WhatsApp del equipo',
+            ].map((f) => (
+              <li key={f} className="flex items-start gap-3 text-sm text-text">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" />
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-10 grid grid-cols-2 gap-6 border-t border-rule pt-8">
+            <div>
+              <p className="num text-3xl text-text">0%</p>
+              <p className="mono mt-1 text-[10px] uppercase tracking-[0.2em] text-text-subtle">
+                Comisión por venta
+              </p>
+            </div>
+            <div>
+              <p className="num text-3xl text-text">14d</p>
+              <p className="mono mt-1 text-[10px] uppercase tracking-[0.2em] text-text-subtle">
+                Sin tarjeta
+              </p>
             </div>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">Crea tu Cuenta</h1>
-          <p className="text-gray-400 mt-2">Empieza a digitalizar tu negocio hoy.</p>
-        </div>
+        </aside>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="bg-[#111] border border-white/10 p-8 rounded-[2rem] shadow-2xl"
+        {/* Right · form */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-8 md:p-12"
         >
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-sm">
-              <AlertTriangle size={18}/>
-              {error}
+            <div className="mb-8 flex items-center gap-3 rounded-[var(--radius-md)] border border-signal/40 bg-signal/10 p-4 text-sm text-signal-soft">
+              <AlertTriangle size={18} className="shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleRegister} className="space-y-5">
-            
-            {/* Paso 1: Tipo de Negocio */}
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">1. ¿Qué tipo de negocio tienes?</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setForm({...form, type: 'gastronomia'})}
-                  className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${form.type === 'gastronomia' ? 'bg-[#d0ff00] border-[#d0ff00] text-black' : 'bg-[#1a1a1a] border-white/10 text-gray-400 hover:border-white/30'}`}
-                >
-                  <Utensils size={24}/>
-                  <span className="font-bold text-sm">Gastronomía</span>
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setForm({...form, type: 'turnos'})}
-                  className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${form.type === 'turnos' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#1a1a1a] border-white/10 text-gray-400 hover:border-white/30'}`}
-                >
-                  <Scissors size={24}/>
-                  <span className="font-bold text-sm">Turnos / Servicios</span>
-                </button>
-              </div>
-            </div>
+          <form onSubmit={handleRegister} className="grid gap-10">
+            {/* 01 · Vertical */}
+            <fieldset>
+              <legend className="flex items-baseline gap-3">
+                <span className="num text-2xl text-text-muted">01</span>
+                <span className="display text-2xl text-text md:text-3xl">
+                  ¿Qué <em className="display-italic text-acid">tipo</em> de negocio?
+                </span>
+              </legend>
 
-            {/* Paso 2: Datos del Negocio */}
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">2. Nombre del Local</label>
-              <div className="relative group">
-                <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={20}/>
-                <input 
-                  type="text" 
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {verticalOptions.map((v) => {
+                  const active = form.type === v.key;
+                  const Icon = v.icon;
+                  return (
+                    <button
+                      key={v.key}
+                      type="button"
+                      onClick={() => setForm({ ...form, type: v.key })}
+                      className={`group relative overflow-hidden rounded-[var(--radius-lg)] border p-5 text-left transition-all ${
+                        active
+                          ? v.key === 'gastronomia'
+                            ? 'border-acid bg-acid/8'
+                            : 'border-ml bg-ml/8'
+                          : 'border-rule-strong bg-ink-3 hover:border-text-muted'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div
+                          className={`flex h-11 w-11 items-center justify-center rounded-full ${
+                            active
+                              ? v.key === 'gastronomia'
+                                ? 'bg-acid text-ink'
+                                : 'bg-ml text-white'
+                              : 'border border-rule-strong text-text-muted'
+                          }`}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        {active && (
+                          <span
+                            className={`mono text-[10px] uppercase tracking-[0.22em] ${
+                              v.key === 'gastronomia' ? 'text-acid' : 'text-ml-soft'
+                            }`}
+                          >
+                            Seleccionado
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="display mt-5 text-2xl text-text">{v.label}</h3>
+                      <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                        {v.subtitle}
+                      </p>
+                      <ul className="mt-4 grid gap-1.5 text-xs text-text-muted">
+                        {v.features.map((f) => (
+                          <li key={f} className="flex items-center gap-2">
+                            <span className="h-1 w-1 rounded-full bg-current" /> {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <Rule />
+
+            {/* 02 · Nombre */}
+            <fieldset>
+              <legend className="flex items-baseline gap-3">
+                <span className="num text-2xl text-text-muted">02</span>
+                <span className="display text-2xl text-text md:text-3xl">
+                  ¿Cómo se <em className="display-italic text-acid">llama</em> tu local?
+                </span>
+              </legend>
+
+              <div className="mt-6">
+                <Field
+                  label="Nombre del local"
+                  icon={Store}
+                  placeholder="Ej: La Esquina"
                   required
-                  placeholder="Ej: Burger King" 
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white outline-none focus:border-white/30 transition-all placeholder:text-gray-600"
                   value={form.storeName}
                   onChange={handleNameChange}
                 />
+                {form.slug && (
+                  <div className="mt-4 flex items-center gap-3 rounded-[var(--radius-md)] border border-acid/20 bg-acid/5 p-4">
+                    <Globe className="h-4 w-4 shrink-0 text-acid" />
+                    <div className="min-w-0 flex-1">
+                      <p className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                        Tu URL pública
+                      </p>
+                      <p className="mono mt-1 truncate text-sm text-text">
+                        {appConfig.appDomainLabel}/<span className="text-acid">{form.slug}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-              {form.slug && (
-                <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-500 bg-white/5 p-2 rounded-lg">
-                  <Globe size={12}/>
-                  <span>{appConfig.appDomainLabel}/<strong>{form.slug}</strong></span>
-                </div>
-              )}
-            </div>
+            </fieldset>
 
-            {/* Paso 3: Datos de Acceso */}
-            <div className="space-y-4 pt-4 border-t border-white/5">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 block">3. Tus Datos de Acceso</label>
-              
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={20}/>
-                <input 
-                  type="email" 
+            <Rule />
+
+            {/* 03 · Acceso */}
+            <fieldset>
+              <legend className="flex items-baseline gap-3">
+                <span className="num text-2xl text-text-muted">03</span>
+                <span className="display text-2xl text-text md:text-3xl">
+                  Tus <em className="display-italic text-acid">datos</em> de acceso.
+                </span>
+              </legend>
+
+              <div className="mt-6 grid gap-5">
+                <Field
+                  label="Email"
+                  type="email"
+                  icon={Mail}
+                  placeholder="tu@email.com"
                   required
-                  placeholder="tu@email.com" 
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white outline-none focus:border-white/30 transition-all placeholder:text-gray-600"
+                  autoComplete="email"
                   value={form.email}
-                  onChange={(e) => setForm({...form, email: e.target.value})}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
-              </div>
-
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-white transition-colors" size={20}/>
-                <input 
-                  type="password" 
+                <Field
+                  label="Contraseña"
+                  type="password"
+                  icon={Lock}
+                  placeholder="Mínimo 6 caracteres"
                   required
-                  placeholder="Contraseña segura" 
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white outline-none focus:border-white/30 transition-all placeholder:text-gray-600"
+                  autoComplete="new-password"
                   value={form.password}
-                  onChange={(e) => setForm({...form, password: e.target.value})}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
                 />
               </div>
-            </div>
+            </fieldset>
 
-            <button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading}
-              className="w-full py-4 rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 mt-4"
-              style={{
-                backgroundColor: form.type === 'gastronomia' ? '#d0ff00' : '#2563eb',
-                color: form.type === 'gastronomia' ? 'black' : 'white'
-              }}
+              variant={activeAccent === 'acid' ? 'acid' : 'paper'}
+              size="xl"
+              className="mt-2"
             >
-              {loading ? <Loader2 className="animate-spin"/> : <>Crear Tienda <ArrowRight size={20}/></>}
-            </button>
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  Crear tienda <ArrowRight className="h-5 w-5" />
+                </>
+              )}
+            </Button>
 
+            <p className="mono text-center text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+              Al continuar aceptás los términos de uso de Rivapp.
+            </p>
           </form>
-        </motion.div>
-
-        <div className="text-center mt-8">
-          <p className="text-gray-500 text-sm">
-            ¿Ya tienes cuenta? <Link to="/login" className="text-white font-bold hover:underline">Iniciar Sesión</Link>
-          </p>
-        </div>
-
-      </div>
+        </motion.section>
+      </main>
     </div>
   );
 }

@@ -11,7 +11,10 @@
       "Bash(SUPABASE_ACCESS_TOKEN=sbp_39970c8688450f7d7d6c3044cca9f629f2b90e17 npx supabase functions deploy create-store-owner)",
       "Bash(SUPABASE_ACCESS_TOKEN=sbp_39970c8688450f7d7d6c3044cca9f629f2b90e17 npx supabase functions deploy create-store-owner --no-verify-jwt)",
       "Bash(grep -E \"\\\\.sql$\")",
-      "Bash(grep -E \"\\\\.\\(js|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(js|ts\\)$\")",
+      "Bash(npx skills *)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(npm run *)"
     ]
   }
 }
