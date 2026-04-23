@@ -1,24 +1,51 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import Button from '../../components/shared/ui/Button';
+import Eyebrow from '../../components/shared/ui/Eyebrow';
 
 export default function CouponsTab({ coupons, onCreateCoupon, onDeleteCoupon }) {
   return (
-    <div className="animate-in fade-in">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Cupones</h1>
-        <button onClick={onCreateCoupon} className="bg-blue-600 px-6 py-3 rounded-xl font-bold flex gap-2"><Plus /> Crear</button>
+    <div className="anim-rise">
+      <header className="mb-8 flex items-end justify-between">
+        <div>
+          <Eyebrow>Marketing</Eyebrow>
+          <h1 className="display mt-3 text-4xl md:text-5xl">
+            <em className="display-italic text-acid">Cupones</em>
+          </h1>
+        </div>
+        <Button onClick={onCreateCoupon} variant="acid" size="md">
+          <Plus className="h-4 w-4" /> Crear
+        </Button>
       </header>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {coupons.map(c => (
-          <div key={c.id} className="bg-[#1a1a1a] p-6 rounded-2xl border border-dashed border-white/20">
-            <div className="text-xs font-bold text-blue-500 mb-1 tracking-widest">CÓDIGO</div>
-            <h3 className="text-3xl font-bold text-white mb-2 font-mono">{c.code}</h3>
-            <div className="flex justify-between items-end">
-              <div className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-sm font-bold">-{c.discount}% OFF</div>
-              <button onClick={() => onDeleteCoupon(c.id)} className="text-gray-600 hover:text-red-500"><Trash2 size={18} /></button>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {coupons.map((c) => (
+          <div
+            key={c.id}
+            className="group relative rounded-[var(--radius-xl)] border border-dashed border-rule-strong bg-ink-2 p-6 transition-colors hover:border-acid/40"
+          >
+            <div className="flex items-start justify-between">
+              <Eyebrow tone="acid">Código</Eyebrow>
+              <button
+                onClick={() => onDeleteCoupon(c.id)}
+                className="text-text-subtle opacity-0 transition-opacity hover:text-signal group-hover:opacity-100"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
+            <p className="display mono mt-4 text-3xl text-text">{c.code}</p>
+            <p className="mono mt-4 inline-block rounded-full bg-acid/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-acid">
+              -{c.discount}% OFF
+            </p>
           </div>
         ))}
+        {coupons.length === 0 && (
+          <div className="col-span-full rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-16 text-center">
+            <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-subtle">
+              Sin cupones activos
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { Check, ChevronRight, Crown } from 'lucide-react';
+import Eyebrow from '../../components/shared/ui/Eyebrow';
 
 export default function BillingTab({ config, accentColor, onSubscribe }) {
   const hasProPlan =
@@ -8,58 +9,67 @@ export default function BillingTab({ config, accentColor, onSubscribe }) {
     config.is_demo;
 
   return (
-    <div className="animate-in fade-in max-w-4xl">
+    <div className="max-w-4xl anim-rise">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold">Suscripcion Rivapp</h1>
+        <Eyebrow>Plan</Eyebrow>
+        <h1 className="display mt-3 text-4xl md:text-5xl">
+          Tu <em className="display-italic" style={{ color: accentColor }}>suscripción</em>
+        </h1>
       </header>
 
       {hasProPlan ? (
-        <div className="bg-gradient-to-br from-blue-900/40 to-[#111] p-8 rounded-3xl border border-blue-500/50 relative overflow-hidden">
-          <div className="relative z-10 flex justify-between items-center">
+        <div
+          className="relative overflow-hidden rounded-[var(--radius-2xl)] border p-10"
+          style={{ borderColor: `${accentColor}40`, backgroundColor: `${accentColor}08` }}
+        >
+          <div className="flex flex-col items-end justify-between gap-6 md:flex-row">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-blue-400 text-sm font-bold uppercase tracking-widest">TU PLAN ACTUAL</h3>
-                <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1">
-                  <Crown size={10} /> PRO
+              <div className="flex items-center gap-3">
+                <Eyebrow style={{ color: accentColor }}>Tu plan actual</Eyebrow>
+                <span
+                  className="mono inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em]"
+                  style={{ backgroundColor: accentColor, color: 'black' }}
+                >
+                  <Crown className="h-3 w-3" /> Pro
                 </span>
               </div>
-              <h2 className="text-5xl font-bold text-white mb-2">Profesional</h2>
+              <h2 className="display mt-4 text-6xl text-text">Profesional</h2>
             </div>
-            <div className="text-right hidden md:block">
-              <div className="text-3xl font-bold text-white">$40.000</div>
-              <div className="text-sm text-gray-500">/ mes</div>
+            <div className="text-right">
+              <p className="display num text-5xl text-text">$40.000</p>
+              <p className="mono mt-1 text-[11px] uppercase tracking-[0.22em] text-text-subtle">/ mes</p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-[#111] p-8 rounded-3xl border border-white/10">
-            <h3 className="text-gray-400 text-sm font-bold uppercase mb-2">TU PLAN ACTUAL</h3>
-            <h2 className="text-4xl font-bold text-white mb-6">Plan Emprendedor</h2>
-            <ul className="space-y-3 mb-8 text-gray-400 text-sm">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-[var(--radius-2xl)] border border-rule-strong bg-ink-2 p-8">
+            <Eyebrow>Tu plan actual</Eyebrow>
+            <h2 className="display mt-4 text-4xl text-text">Emprendedor</h2>
+            <ul className="mt-8 space-y-3 text-sm text-text-muted">
               <li className="flex items-center gap-2">
-                <Check size={16} /> Menu Digital & Pedidos
+                <Check className="h-4 w-4 text-text-subtle" /> Menú digital y pedidos
               </li>
               <li className="flex items-center gap-2">
-                <Check size={16} /> Gestion Basica
+                <Check className="h-4 w-4 text-text-subtle" /> Gestión básica
               </li>
             </ul>
           </div>
 
-          <div className="p-1 rounded-3xl shadow-2xl" style={{ background: `linear-gradient(to bottom right, ${accentColor}, #0a0a0a)` }}>
-            <div className="bg-[#0f0f0f] h-full w-full rounded-[22px] p-8">
-              <h3 className="text-sm font-bold uppercase mb-2" style={{ color: accentColor }}>
-                PLAN PRO
-              </h3>
-              <div className="flex items-end gap-2 mb-6">
-                <h2 className="text-5xl font-bold text-white">$40.000</h2>
-              </div>
+          <div
+            className="rounded-[var(--radius-2xl)] p-px"
+            style={{ background: `linear-gradient(to bottom right, ${accentColor}, var(--color-ink))` }}
+          >
+            <div className="rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-8">
+              <Eyebrow style={{ color: accentColor }}>Plan Pro</Eyebrow>
+              <p className="display num mt-4 text-5xl text-text">$40.000</p>
+              <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">/ mes</p>
               <button
                 onClick={onSubscribe}
-                className="w-full py-4 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                className="mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold text-ink shadow-[var(--shadow-lift)]"
                 style={{ backgroundColor: accentColor }}
               >
-                Pasarme a PRO <ChevronRight size={18} />
+                Pasarme a Pro <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>

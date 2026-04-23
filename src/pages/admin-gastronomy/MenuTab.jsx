@@ -1,4 +1,6 @@
-import { CheckCircle, Edit, Plus, Trash2, TrendingUp, XCircle, Zap } from 'lucide-react';
+import { CheckCircle2, Edit, Plus, Trash2, TrendingUp, XCircle, Zap } from 'lucide-react';
+import Button from '../../components/shared/ui/Button';
+import Eyebrow from '../../components/shared/ui/Eyebrow';
 
 export default function MenuTab({
   selectedCategory,
@@ -12,34 +14,37 @@ export default function MenuTab({
   onDeleteProduct,
 }) {
   const categories = Array.from(new Set(menuItems.map((item) => item.category))).filter(Boolean);
-  const visibleItems = menuItems.filter((item) => (selectedCategory === 'Todos' ? true : item.category === selectedCategory));
+  const visibleItems = menuItems.filter((item) =>
+    selectedCategory === 'Todos' ? true : item.category === selectedCategory
+  );
 
   return (
-    <div className="animate-in fade-in">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Gestion del Menu</h1>
+    <div className="anim-rise">
+      <header className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
+        <div>
+          <Eyebrow>Catálogo</Eyebrow>
+          <h1 className="display mt-3 text-4xl md:text-5xl">
+            Tu <em className="display-italic text-acid">menú</em>
+          </h1>
+        </div>
         <div className="flex gap-2">
-          <button
-            onClick={onOpenPriceModal}
-            className="px-4 py-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20 hover:bg-blue-500/20 font-bold flex items-center gap-2"
-          >
-            <TrendingUp size={16} /> Precios
-          </button>
-          <button
-            onClick={onOpenCreateProductModal}
-            className="px-6 py-2 rounded-xl font-bold flex items-center gap-2 text-black"
-            style={{ backgroundColor: '#d0ff00' }}
-          >
-            <Plus size={18} /> Nuevo
-          </button>
+          <Button onClick={onOpenPriceModal} variant="outline" size="md">
+            <TrendingUp className="h-4 w-4" /> Precios masivos
+          </Button>
+          <Button onClick={onOpenCreateProductModal} variant="acid" size="md">
+            <Plus className="h-4 w-4" /> Nuevo
+          </Button>
         </div>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar">
+      {/* Categorías */}
+      <div className="no-scrollbar mb-6 flex gap-2 overflow-x-auto pb-2">
         <button
           onClick={() => setSelectedCategory('Todos')}
-          className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
-            selectedCategory === 'Todos' ? 'bg-white text-black' : 'bg-[#1a1a1a] text-gray-400 border border-white/10 hover:bg-white/10'
+          className={`mono whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] transition-all ${
+            selectedCategory === 'Todos'
+              ? 'bg-acid text-ink'
+              : 'border border-rule-strong bg-ink-2 text-text-muted hover:border-text-muted hover:text-text'
           }`}
         >
           Todas
@@ -48,8 +53,10 @@ export default function MenuTab({
           <button
             key={category}
             onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
-              selectedCategory === category ? 'bg-white text-black' : 'bg-[#1a1a1a] text-gray-400 border border-white/10 hover:bg-white/10'
+            className={`mono whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] transition-all ${
+              selectedCategory === category
+                ? 'bg-acid text-ink'
+                : 'border border-rule-strong bg-ink-2 text-text-muted hover:border-text-muted hover:text-text'
             }`}
           >
             {category}
@@ -61,48 +68,65 @@ export default function MenuTab({
         {visibleItems.map((item) => (
           <div
             key={item.id}
-            className="bg-[#1a1a1a] p-3 rounded-xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all"
+            className="group flex items-center justify-between gap-4 rounded-[var(--radius-md)] border border-rule-strong bg-ink-2 p-3 transition-colors hover:border-text-muted"
           >
-            <div className="flex items-center gap-4 overflow-hidden">
-              <img src={item.image || 'https://placehold.co/100'} className="w-12 h-12 rounded-lg object-cover bg-black/40 shrink-0" />
+            <div className="flex min-w-0 items-center gap-4">
+              <img
+                src={item.image || 'https://placehold.co/100'}
+                alt={item.name}
+                className="h-14 w-14 shrink-0 rounded-[var(--radius-sm)] object-cover"
+              />
               <div className="min-w-0">
-                <h3 className="font-bold text-white text-sm truncate">{item.name}</h3>
-                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{item.category}</span>
+                <h3 className="display truncate text-lg text-text">{item.name}</h3>
+                <p className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                  {item.category}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={() => onOpenPromoModal(item)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500 hover:text-black transition-all"
-                title="Crear Promocion"
+                className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-acid/20 bg-acid/10 text-acid transition-all hover:bg-acid hover:text-ink"
+                title="Crear promoción"
               >
-                <Zap size={16} />
+                <Zap className="h-4 w-4" />
               </button>
-              <div className="bg-black/30 px-3 py-1 rounded-lg border border-white/5 font-mono text-sm font-bold w-20 text-center">${item.price}</div>
+              <div className="num w-20 rounded-[var(--radius-sm)] border border-rule bg-ink-3 px-3 py-1.5 text-center text-sm font-semibold text-text">
+                ${item.price}
+              </div>
               <button
                 onClick={() => onToggleAvailability(item.id, 'available', !item.available)}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${
-                  item.available ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
+                className={`flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border transition-all ${
+                  item.available
+                    ? 'border-acid/30 bg-acid/10 text-acid hover:bg-acid hover:text-ink'
+                    : 'border-signal/30 bg-signal/10 text-signal hover:bg-signal hover:text-white'
                 }`}
               >
-                {item.available ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                {item.available ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               </button>
               <button
                 onClick={() => onOpenEditProductModal(item)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
+                className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-rule bg-white/5 text-ml-soft transition-all hover:border-ml hover:bg-ml hover:text-white"
               >
-                <Edit size={16} />
+                <Edit className="h-4 w-4" />
               </button>
               <button
                 onClick={() => onDeleteProduct(item.id)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 text-signal transition-all hover:bg-signal hover:text-white"
               >
-                <Trash2 size={16} />
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
           </div>
         ))}
+        {visibleItems.length === 0 && (
+          <div className="rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-16 text-center">
+            <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-subtle">
+              Sin productos en esta categoría
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

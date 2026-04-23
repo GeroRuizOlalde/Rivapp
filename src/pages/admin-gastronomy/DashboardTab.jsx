@@ -1,22 +1,40 @@
 import React from 'react';
-import { Bell, X, ExternalLink, Archive } from 'lucide-react';
+import { Bell, X, ExternalLink, Archive, TrendingUp } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import NotificationPanel from '../../components/admin/NotificationPanel';
+import Button from '../../components/shared/ui/Button';
+import Eyebrow from '../../components/shared/ui/Eyebrow';
+import Rule from '../../components/shared/ui/Rule';
 
 export default function DashboardTab({
-  config, role, accentColor, viewBranchId, getBranchName,
-  dashboardData, globalNotifications, onDismissMessage,
-  storeNotifications, unreadCount, onMarkAsRead, onMarkAllAsRead,
-  onDeleteNotification, onClearAllNotifications,
+  config,
+  role,
+  accentColor,
+  viewBranchId,
+  getBranchName,
+  dashboardData,
+  globalNotifications,
+  onDismissMessage,
+  storeNotifications,
+  unreadCount,
+  onMarkAsRead,
+  onMarkAllAsRead,
+  onDeleteNotification,
+  onClearAllNotifications,
   onCloseRegister,
 }) {
+  const branchLabel = !viewBranchId ? 'Todas las sucursales' : getBranchName(viewBranchId);
+
   return (
-    <div className="space-y-6 animate-in fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-8 anim-rise">
+      <header className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <h1 className="text-3xl font-bold italic">Hola, {config?.name}</h1>
-          <p className="text-sm text-gray-400">
-            Viendo datos de: <strong className="text-white">{!viewBranchId ? 'Todas las Sucursales' : getBranchName(viewBranchId)}</strong>.
+          <Eyebrow>Panel</Eyebrow>
+          <h1 className="display mt-3 text-4xl md:text-5xl">
+            Hola, <em className="display-italic" style={{ color: accentColor }}>{config?.name}</em>
+          </h1>
+          <p className="mono mt-2 text-[11px] uppercase tracking-[0.22em] text-text-subtle">
+            Viendo · <span className="text-text">{branchLabel}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -29,26 +47,41 @@ export default function DashboardTab({
             onClearAll={onClearAllNotifications}
             accentColor={accentColor}
           />
-          <a href={`/${config?.slug}`} target="_blank" rel="noopener noreferrer" className="bg-[#1a1a1a] border border-white/10 text-white p-3 rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 group">
-            <ExternalLink size={20} style={{ color: accentColor }} className="group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-sm">Ver Local</span>
-          </a>
+          <Button href={`/${config?.slug}`} target="_blank" rel="noopener noreferrer" variant="outline" size="md">
+            <ExternalLink className="h-4 w-4" style={{ color: accentColor }} /> Ver local
+          </Button>
         </div>
-      </div>
+      </header>
 
       {globalNotifications.length > 0 && (
-        <div className="bg-[#1a1a1a] p-6 rounded-[2rem] border border-[#d0ff00]/20 relative overflow-hidden shadow-lg">
-          <div className="absolute top-0 right-0 bg-[#d0ff00]/5 w-32 h-32 blur-3xl rounded-full -mr-10 -mt-10"></div>
-          <h3 className="font-black text-[#d0ff00] text-sm uppercase tracking-widest mb-4 flex items-center gap-2"><Bell size={16} /> Comunicados Rivapp</h3>
+        <div
+          className="relative overflow-hidden rounded-[var(--radius-xl)] border p-6"
+          style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}08` }}
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <Eyebrow style={{ color: accentColor }}>
+              <Bell className="h-3 w-3" /> Comunicados Rivapp
+            </Eyebrow>
+          </div>
           <div className="space-y-3">
-            {globalNotifications.map(n => (
-              <div key={n.id} className="p-4 bg-black/40 rounded-2xl border border-white/5 flex justify-between items-start gap-4">
+            {globalNotifications.map((n) => (
+              <div
+                key={n.id}
+                className="flex items-start justify-between gap-4 rounded-[var(--radius-md)] border border-rule bg-ink-3 p-4"
+              >
                 <div className="flex-1">
-                  <h4 className="font-bold text-white text-sm mb-1">{n.title}</h4>
-                  <p className="text-xs text-gray-400 leading-relaxed">{n.message}</p>
-                  <span className="text-[9px] text-gray-600 font-bold uppercase mt-2 block">{new Date(n.created_at).toLocaleDateString()}</span>
+                  <p className="display text-lg text-text">{n.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-text-muted">{n.message}</p>
+                  <p className="mono mt-3 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                    {new Date(n.created_at).toLocaleDateString('es-AR')}
+                  </p>
                 </div>
-                <button onClick={() => onDismissMessage(n.id)} className="p-1 hover:bg-white/10 rounded-lg text-gray-600 hover:text-white transition-colors"><X size={16} /></button>
+                <button
+                  onClick={() => onDismissMessage(n.id)}
+                  className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
           </div>
@@ -56,37 +89,83 @@ export default function DashboardTab({
       )}
 
       {role !== 'staff' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5"><div className="text-gray-400 text-xs font-bold uppercase mb-2">Facturación</div><div className="text-2xl md:text-3xl font-bold text-white">${dashboardData.totalRevenue.toLocaleString()}</div></div>
-          <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5"><div className="text-gray-400 text-xs font-bold uppercase mb-2">Pedidos</div><div className="text-2xl md:text-3xl font-bold text-white">{dashboardData.totalOrders}</div></div>
-          <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5"><div className="text-gray-400 text-xs font-bold uppercase mb-2">Ticket Promedio</div><div className="text-2xl md:text-3xl font-bold text-blue-400">${Math.round(dashboardData.avgTicket).toLocaleString()}</div></div>
-          <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5"><div className="text-gray-400 text-xs font-bold uppercase mb-2">Top Producto</div><div className="text-lg font-bold text-orange-400 truncate">{dashboardData.topProducts[0]?.name || "N/A"}</div></div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {[
+            { label: 'Facturación', value: `$${dashboardData.totalRevenue.toLocaleString()}`, tone: accentColor },
+            { label: 'Pedidos', value: dashboardData.totalOrders, tone: 'var(--color-text)' },
+            {
+              label: 'Ticket promedio',
+              value: `$${Math.round(dashboardData.avgTicket).toLocaleString()}`,
+              tone: 'var(--color-ml-soft)',
+            },
+            {
+              label: 'Top producto',
+              value: dashboardData.topProducts[0]?.name || '—',
+              tone: 'var(--color-text)',
+              truncate: true,
+            },
+          ].map((s) => (
+            <div key={s.label} className="rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6">
+              <Eyebrow>{s.label}</Eyebrow>
+              <p
+                className={`display num mt-5 text-3xl md:text-4xl ${s.truncate ? 'truncate' : ''}`}
+                style={{ color: s.tone }}
+              >
+                {s.value}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
       {role === 'staff' && (
-        <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5">
-          <div className="text-gray-400 text-xs font-bold uppercase mb-2">Pedidos de Hoy</div>
-          <div className="text-2xl md:text-3xl font-bold text-white">{dashboardData.totalOrders}</div>
+        <div className="rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6">
+          <Eyebrow>Hoy</Eyebrow>
+          <p className="display num mt-5 text-4xl text-text">{dashboardData.totalOrders} pedidos</p>
         </div>
       )}
 
       {role !== 'staff' && (
-        <div className="col-span-2 bg-[#1a1a1a] p-6 rounded-2xl border border-white/5 h-96 relative">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dashboardData.chartData}>
-              <defs><linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={accentColor} stopOpacity={0.3} /><stop offset="95%" stopColor={accentColor} stopOpacity={0} /></linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-              <XAxis dataKey="name" stroke="#666" />
-              <YAxis stroke="#666" />
-              <Tooltip contentStyle={{ backgroundColor: '#000', border: '1px solid #333' }} />
-              <Area type="monotone" dataKey="value" stroke={accentColor} fill="url(#colorValue)" strokeWidth={3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <section className="rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-8">
+          <Eyebrow>
+            <TrendingUp className="h-3 w-3" /> Evolución
+          </Eyebrow>
+          <h3 className="display mt-3 text-2xl text-text">
+            Facturación <em className="display-italic" style={{ color: accentColor }}>día a día</em>
+          </h3>
+          <Rule className="mt-5" />
+          <div className="mt-6 h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dashboardData.chartData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={accentColor} stopOpacity={0.35} />
+                    <stop offset="95%" stopColor={accentColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-rule-strong)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="var(--color-text-muted)" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-ink-2)',
+                    border: '1px solid var(--color-rule-strong)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                />
+                <Area type="monotone" dataKey="value" stroke={accentColor} fill="url(#colorValue)" strokeWidth={2.5} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
       )}
 
-      <button onClick={onCloseRegister} className="w-full bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-8 py-4 rounded-xl font-bold shadow-lg flex items-center justify-center gap-3 transition-all"><Archive size={20} /> CERRAR CAJA Y ARCHIVAR</button>
+      <button
+        onClick={onCloseRegister}
+        className="mono flex w-full items-center justify-center gap-3 rounded-[var(--radius-md)] border border-signal/30 bg-signal/10 px-8 py-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-signal-soft transition-all hover:bg-signal hover:text-white"
+      >
+        <Archive className="h-4 w-4" /> Cerrar caja y archivar
+      </button>
     </div>
   );
 }
