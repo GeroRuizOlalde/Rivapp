@@ -2,15 +2,23 @@ import { useEffect, useState } from 'react';
 import { X, ShoppingBag, Calendar, Star, AlertTriangle, Users, CreditCard, Info } from 'lucide-react';
 
 const TYPE_CONFIG = {
-  new_order:          { icon: ShoppingBag,   color: '#22c55e', bg: '#22c55e', label: 'Nuevo Pedido' },
-  order_status:       { icon: ShoppingBag,   color: '#3b82f6', bg: '#3b82f6', label: 'Pedido' },
-  new_appointment:    { icon: Calendar,      color: '#8b5cf6', bg: '#8b5cf6', label: 'Nuevo Turno' },
-  appointment_status: { icon: Calendar,      color: '#3b82f6', bg: '#3b82f6', label: 'Turno' },
-  low_stock:          { icon: AlertTriangle, color: '#f59e0b', bg: '#f59e0b', label: 'Stock Bajo' },
-  new_review:         { icon: Star,          color: '#eab308', bg: '#eab308', label: 'Nueva Reseña' },
-  new_member:         { icon: Users,         color: '#06b6d4', bg: '#06b6d4', label: 'Equipo' },
-  payment_received:   { icon: CreditCard,    color: '#22c55e', bg: '#22c55e', label: 'Pago' },
-  system:             { icon: Info,          color: '#6b7280', bg: '#6b7280', label: 'Sistema' },
+  new_order:          { icon: ShoppingBag,   tone: 'acid',   label: 'Nuevo pedido' },
+  order_status:       { icon: ShoppingBag,   tone: 'ml',     label: 'Pedido' },
+  new_appointment:    { icon: Calendar,      tone: 'violet', label: 'Nuevo turno' },
+  appointment_status: { icon: Calendar,      tone: 'ml',     label: 'Turno' },
+  low_stock:          { icon: AlertTriangle, tone: 'amber',  label: 'Stock bajo' },
+  new_review:         { icon: Star,          tone: 'amber',  label: 'Nueva reseña' },
+  new_member:         { icon: Users,         tone: 'ml',     label: 'Equipo' },
+  payment_received:   { icon: CreditCard,    tone: 'acid',   label: 'Pago' },
+  system:             { icon: Info,          tone: 'muted',  label: 'Sistema' },
+};
+
+const TONE_STYLES = {
+  acid:   { bg: 'rgba(208,255,0,0.14)',  color: '#D0FF00', bar: '#D0FF00' },
+  ml:     { bg: 'rgba(0,158,227,0.14)',  color: '#7CD3FF', bar: '#009EE3' },
+  violet: { bg: 'rgba(139,92,246,0.18)', color: '#B2A3FF', bar: '#8B5CF6' },
+  amber:  { bg: 'rgba(255,159,28,0.18)', color: '#FFB75A', bar: '#FF9F1C' },
+  muted:  { bg: 'rgba(247,245,238,0.08)',color: '#A19B8D', bar: '#A19B8D' },
 };
 
 function SingleToast({ toast, onDismiss, onClick }) {
@@ -18,11 +26,10 @@ function SingleToast({ toast, onDismiss, onClick }) {
   const [exiting, setExiting] = useState(false);
   const config = TYPE_CONFIG[toast.type] || TYPE_CONFIG.system;
   const Icon = config.icon;
+  const toneStyle = TONE_STYLES[config.tone] || TONE_STYLES.muted;
 
   useEffect(() => {
-    // Entrada animada
     requestAnimationFrame(() => setVisible(true));
-    // Salida animada antes de remover
     const exitTimer = setTimeout(() => setExiting(true), 4500);
     return () => clearTimeout(exitTimer);
   }, []);
@@ -44,7 +51,7 @@ function SingleToast({ toast, onDismiss, onClick }) {
   return (
     <div
       onClick={handleClick}
-      className="cursor-pointer group"
+      className="group cursor-pointer"
       style={{
         transform: visible && !exiting ? 'translateX(0)' : 'translateX(120%)',
         opacity: visible && !exiting ? 1 : 0,
@@ -52,51 +59,48 @@ function SingleToast({ toast, onDismiss, onClick }) {
         marginBottom: '10px',
       }}
     >
-      <div className="relative w-[340px] bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Barra de progreso */}
+      <div className="relative w-[340px] overflow-hidden rounded-[var(--radius-md)] border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)]">
         <div
-          className="absolute bottom-0 left-0 h-[3px] rounded-full"
+          className="absolute bottom-0 left-0 h-[2px]"
           style={{
-            backgroundColor: config.bg,
+            backgroundColor: toneStyle.bar,
             animation: 'shrinkWidth 5s linear forwards',
           }}
         />
 
         <div className="flex items-start gap-3 p-4">
-          {/* Icono */}
           <div
-            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: config.color + '20' }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: toneStyle.bg }}
           >
-            <Icon size={20} style={{ color: config.color }} />
+            <Icon className="h-5 w-5" style={{ color: toneStyle.color }} />
           </div>
 
-          {/* Contenido */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center gap-2">
               <span
-                className="text-[10px] font-black uppercase tracking-widest"
-                style={{ color: config.color }}
+                className="mono text-[9px] font-semibold uppercase tracking-[0.22em]"
+                style={{ color: toneStyle.color }}
               >
                 {config.label}
               </span>
-              <span className="text-[10px] text-gray-600">ahora</span>
+              <span className="mono text-[9px] text-text-subtle">·</span>
+              <span className="mono text-[9px] uppercase tracking-[0.2em] text-text-subtle">ahora</span>
             </div>
-            <p className="text-sm font-bold text-white leading-tight">{toast.title}</p>
+            <p className="display text-base leading-tight text-text">{toast.title}</p>
             {toast.body && (
-              <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{toast.body}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-text-muted">{toast.body}</p>
             )}
-            <p className="text-[10px] text-gray-600 mt-1.5 group-hover:text-white transition-colors">
-              Toca para ver →
+            <p className="mono mt-2 text-[10px] uppercase tracking-[0.22em] text-text-subtle transition-colors group-hover:text-text">
+              Tocar para ver →
             </p>
           </div>
 
-          {/* Cerrar */}
           <button
             onClick={handleClose}
-            className="shrink-0 p-1 rounded-lg text-gray-600 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+            className="shrink-0 rounded-[var(--radius-sm)] p-1 text-text-subtle opacity-0 transition-all hover:bg-white/5 hover:text-text group-hover:opacity-100"
           >
-            <X size={14} />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -109,7 +113,6 @@ export default function NotificationToast({ toasts, onDismiss, onClickToast }) {
 
   return (
     <>
-      {/* CSS para la animación de la barra */}
       <style>{`
         @keyframes shrinkWidth {
           from { width: 100%; }
@@ -117,8 +120,8 @@ export default function NotificationToast({ toasts, onDismiss, onClickToast }) {
         }
       `}</style>
 
-      <div className="fixed top-4 right-4 z-[300] flex flex-col items-end pointer-events-auto">
-        {toasts.slice(-3).map(toast => (
+      <div className="pointer-events-auto fixed right-4 top-4 z-[300] flex flex-col items-end">
+        {toasts.slice(-3).map((toast) => (
           <SingleToast
             key={toast.toastId}
             toast={toast}
