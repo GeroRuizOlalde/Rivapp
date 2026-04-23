@@ -5,6 +5,7 @@ import { logger } from '../utils/logger';
 
 import AdminGastronomy from './AdminGastronomy';
 import AdminServices from './AdminServices';
+import Eyebrow from '../components/shared/ui/Eyebrow';
 
 export default function Admin() {
   const { store, loading } = useStore();
@@ -21,17 +22,26 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 size={48} className="text-white animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-ink">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-acid" />
+          <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-muted">Cargando panel</p>
+        </div>
       </div>
     );
   }
 
   if (!store) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-4">
-        <AlertCircle size={48} className="text-red-500" />
-        <h2 className="text-xl font-bold">No se encontro la configuracion</h2>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-ink px-6 text-center text-text">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-signal/40 bg-signal/10 text-signal">
+          <AlertCircle className="h-6 w-6" />
+        </div>
+        <Eyebrow className="mt-6">Configuración</Eyebrow>
+        <h2 className="display mt-3 text-4xl">
+          No se <em className="display-italic text-acid">encontró</em>
+        </h2>
+        <p className="mt-3 text-sm text-text-muted">No pudimos cargar la configuración de tu tienda.</p>
       </div>
     );
   }
@@ -47,16 +57,22 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-10 text-center">
-      <h2 className="text-2xl font-bold text-yellow-500 mb-4">Rubro no detectado</h2>
-      <p className="text-gray-400">
-        La tienda <b>{store.slug}</b> tiene un tipo de negocio desconocido.
-      </p>
-      <div className="mt-4 p-3 bg-white/5 rounded-lg font-mono text-xs text-[#d0ff00]">
-        Dato recibido: "{store.business_type}"
+    <div className="flex min-h-screen flex-col items-center justify-center bg-ink px-6 text-center text-text">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-acid/40 bg-acid/10 text-acid">
+        <AlertCircle className="h-6 w-6" />
       </div>
-      <p className="mt-6 text-sm text-gray-500 max-w-md">
-        Valores aceptados: <em>gastronomy, gastronomia, restaurant, turnos, services</em>.
+      <Eyebrow className="mt-6">Rubro</Eyebrow>
+      <h2 className="display mt-3 text-4xl md:text-5xl">
+        Rubro <em className="display-italic text-acid">no detectado</em>
+      </h2>
+      <p className="mt-4 max-w-md text-sm text-text-muted">
+        La tienda <span className="text-text">{store.slug}</span> tiene un tipo de negocio desconocido.
+      </p>
+      <div className="mono mt-6 rounded-[var(--radius-sm)] border border-rule bg-ink-2 px-3 py-2 text-xs text-acid">
+        business_type = "{store.business_type}"
+      </div>
+      <p className="mt-6 max-w-md text-xs text-text-subtle">
+        Valores aceptados: <em className="display-italic">gastronomy, gastronomia, restaurant, turnos, services</em>.
       </p>
     </div>
   );

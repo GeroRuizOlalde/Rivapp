@@ -1,12 +1,14 @@
 import { Check, MapPin, Printer, Bike, User } from 'lucide-react';
 
 export const KanbanColumn = ({ title, count, children }) => (
-  <div className="flex-1 flex flex-col bg-[#141414] rounded-2xl border border-white/5 min-w-[300px] snap-center h-full max-h-[calc(100vh-140px)]">
-    <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#1a1a1a] rounded-t-2xl sticky top-0 z-10">
-      <h3 className="font-bold text-white text-xs uppercase tracking-widest">{title}</h3>
-      <span className="bg-white/10 text-gray-400 text-[10px] px-2 py-1 rounded-full font-bold">{count}</span>
+  <div className="flex h-full max-h-[calc(100vh-140px)] min-w-[300px] flex-1 flex-col snap-center rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2">
+    <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-[var(--radius-xl)] border-b border-rule bg-ink-3 px-4 py-3">
+      <h3 className="mono text-[11px] font-semibold uppercase tracking-[0.22em] text-text">{title}</h3>
+      <span className="num rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-text-muted">
+        {count}
+      </span>
     </div>
-    <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">{children}</div>
+    <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-3">{children}</div>
   </div>
 );
 
@@ -24,36 +26,40 @@ export const OrderCard = ({
   const isPaid = order.payment_status === 'paid' || order.paid === true;
 
   return (
-    <div className="bg-[#1e1e1e] p-4 rounded-xl border border-white/5 shadow-xl group hover:border-white/10 transition-all relative overflow-hidden">
+    <div className="group relative overflow-hidden rounded-[var(--radius-md)] border border-rule-strong bg-ink-3 p-4 transition-all hover:border-text-muted">
       {order.payment_method === 'mercadopago' && (
         <div
-          className={`absolute top-0 right-0 px-3 py-1 text-[10px] font-bold rounded-bl-xl flex items-center gap-1 ${
-            isPaid ? 'bg-green-500 text-white' : 'bg-[#009EE3] text-white'
+          className={`mono absolute right-0 top-0 flex items-center gap-1 rounded-bl-[var(--radius-sm)] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] ${
+            isPaid ? 'bg-acid text-ink' : 'bg-ml text-white'
           }`}
         >
           {isPaid ? (
             <>
-              <Check size={10} /> PAGADO
+              <Check className="h-3 w-3" /> Pagado
             </>
           ) : (
-            'MERCADO PAGO'
+            'MP'
           )}
         </div>
       )}
 
-      <div className="flex justify-between items-start mb-3 mt-2">
-        <div>
-          <h4 className="font-bold text-white leading-none text-lg">{order.customer_name}</h4>
+      <div className="mb-3 mt-2 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h4 className="display truncate text-lg text-text">{order.customer_name}</h4>
           {branchName && (
-            <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400 font-mono bg-white/5 px-2 py-0.5 rounded w-fit">
-              <MapPin size={10} className="text-[#d0ff00]" /> {branchName}
+            <div className="mono mt-1 inline-flex items-center gap-1 rounded-sm bg-white/5 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] text-text-muted">
+              <MapPin className="h-2.5 w-2.5 text-acid" /> {branchName}
             </div>
           )}
-          <div className="flex items-center gap-2 mt-2">
-            <p className="text-[10px] text-gray-500 uppercase font-bold">{order.payment_method}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="mono text-[9px] uppercase tracking-[0.2em] text-text-subtle">
+              {order.payment_method}
+            </span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
-                isPickup ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-500'
+              className={`mono rounded-sm px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] ${
+                isPickup
+                  ? 'bg-signal/10 text-signal-soft'
+                  : 'bg-ml/10 text-ml-soft'
               }`}
             >
               {isPickup ? 'Retiro' : 'Delivery'}
@@ -61,40 +67,45 @@ export const OrderCard = ({
             {!isPaid && !isFinished && (
               <button
                 onClick={() => onMarkPaid(order.id)}
-                className="text-[10px] bg-white/10 hover:bg-green-500/20 hover:text-green-500 text-gray-400 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
-                title="Marcar como pagado manualmente"
+                className="inline-flex items-center gap-1 rounded-sm bg-white/5 px-2 py-0.5 text-[9px] text-text-muted transition-colors hover:bg-acid/10 hover:text-acid"
+                title="Marcar como pagado"
               >
-                <Check size={10} />
+                <Check className="h-2.5 w-2.5" />
               </button>
             )}
           </div>
         </div>
-        <button onClick={() => onPrint(order)} className="p-2 bg-black/50 rounded-lg text-blue-400 hover:text-white transition-colors">
-          <Printer size={16} />
+        <button
+          onClick={() => onPrint(order)}
+          className="rounded-[var(--radius-sm)] border border-rule bg-ink p-2 text-ml-soft hover:border-ml hover:text-ml"
+        >
+          <Printer className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="space-y-1 mb-4 border-l-2 border-white/5 pl-3">
+      <div className="mb-4 space-y-1 border-l-2 border-rule pl-3">
         {(order.items || []).map((item, idx) => (
-          <div key={idx} className="text-sm text-gray-300">
-            <span className="font-bold text-white">{item.quantity}x</span> {item.name}{' '}
-            {item.variantName && <span className="text-gray-500 text-xs">({item.variantName})</span>}
+          <div key={idx} className="text-sm text-text-muted">
+            <span className="num font-semibold text-text">{item.quantity}x</span> {item.name}{' '}
+            {item.variantName && <span className="text-text-subtle">({item.variantName})</span>}
             {item.selectedExtras && item.selectedExtras.length > 0 && (
-              <div className="text-[10px] text-gray-500 ml-4">+ {item.selectedExtras.map((extra) => extra.name).join(', ')}</div>
+              <div className="mono ml-4 text-[9px] uppercase tracking-[0.18em] text-text-subtle">
+                + {item.selectedExtras.map((extra) => extra.name).join(', ')}
+              </div>
             )}
           </div>
         ))}
         {order.note && (
-          <p className="text-xs text-yellow-500 italic mt-2 bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
+          <p className="mt-2 rounded-[var(--radius-sm)] border border-acid/20 bg-acid/10 p-2 text-xs italic text-acid">
             Nota: "{order.note}"
           </p>
         )}
         {!isPickup && (
-          <div className="mt-2 text-xs flex items-center gap-1 text-blue-400 font-bold">
-            <Bike size={12} /> Envio: ${order.delivery_cost || 0}
+          <div className="mono mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-ml-soft">
+            <Bike className="h-3 w-3" /> Envío: ${order.delivery_cost || 0}
           </div>
         )}
-        <div className="mt-2 text-lg font-black text-white text-right border-t border-white/10 pt-2">
+        <div className="num mt-2 border-t border-rule pt-2 text-right display text-xl text-text">
           ${order.total?.toLocaleString()}
         </div>
       </div>
@@ -105,13 +116,13 @@ export const OrderCard = ({
             <>
               <button
                 onClick={() => onReject(order.id)}
-                className="bg-red-500/10 text-red-500 py-3 rounded-xl text-xs font-bold uppercase hover:bg-red-500 hover:text-white transition-colors"
+                className="mono rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-signal-soft transition-colors hover:bg-signal hover:text-white"
               >
                 Rechazar
               </button>
               <button
                 onClick={() => onStatusChange(order.id, 'confirmado')}
-                className="bg-green-500/10 text-green-500 py-3 rounded-xl text-xs font-bold uppercase hover:bg-green-500 hover:text-white transition-colors"
+                className="mono rounded-[var(--radius-sm)] bg-acid py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink transition-colors hover:brightness-110"
               >
                 Confirmar
               </button>
@@ -120,9 +131,9 @@ export const OrderCard = ({
           {order.status === 'confirmado' && (
             <button
               onClick={() => onStatusChange(order.id, 'listo')}
-              className="col-span-2 bg-blue-600 py-3 rounded-xl text-xs font-bold text-white uppercase hover:bg-blue-500 transition-colors"
+              className="mono col-span-2 rounded-[var(--radius-sm)] bg-ml py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-white transition-colors hover:brightness-110"
             >
-              Marcar Listo
+              Marcar listo
             </button>
           )}
           {order.status === 'listo' && (
@@ -130,21 +141,21 @@ export const OrderCard = ({
               {isPickup ? (
                 <button
                   onClick={() => onStatusChange(order.id, 'entregado')}
-                  className="col-span-2 bg-green-600 py-3 rounded-xl text-xs font-bold text-white uppercase hover:bg-green-500 transition-colors flex items-center justify-center gap-2"
+                  className="mono col-span-2 inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-acid py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink transition-colors hover:brightness-110"
                 >
-                  <User size={16} /> Entregado al Cliente
+                  <User className="h-3.5 w-3.5" /> Entregado al cliente
                 </button>
               ) : (
                 <>
                   <button
                     onClick={onAssignRider}
-                    className="col-span-1 bg-yellow-500/10 text-yellow-500 py-3 rounded-xl text-xs font-bold uppercase hover:bg-yellow-500/20 transition-colors"
+                    className="mono rounded-[var(--radius-sm)] border border-rule-strong bg-white/5 py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-muted transition-colors hover:border-acid hover:text-acid"
                   >
                     Rider
                   </button>
                   <button
                     onClick={() => onStatusChange(order.id, 'entregado')}
-                    className="col-span-1 bg-green-600 py-3 rounded-xl text-xs font-bold text-white uppercase hover:bg-green-500 transition-colors"
+                    className="mono rounded-[var(--radius-sm)] bg-acid py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink transition-colors hover:brightness-110"
                   >
                     Entregar
                   </button>
@@ -156,7 +167,9 @@ export const OrderCard = ({
       )}
 
       {order.status === 'rechazado' && (
-        <div className="text-red-500 text-xs font-bold text-center uppercase border border-red-500/20 p-2 rounded">Cancelado</div>
+        <div className="mono rounded-[var(--radius-sm)] border border-signal/30 p-2 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-signal">
+          Cancelado
+        </div>
       )}
     </div>
   );
