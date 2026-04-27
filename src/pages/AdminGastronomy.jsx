@@ -50,7 +50,7 @@ export default function AdminGastronomy() {
     clearAll: clearAllNotifications,
   } = useNotifications(config?.id, { soundEnabled: false });
 
-  const [, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isOpen, setIsOpen] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
@@ -1055,7 +1055,10 @@ export default function AdminGastronomy() {
       </aside>
 
       {/* MOBILE NAV */}
-      <nav className="pb-safe fixed inset-x-0 bottom-0 z-50 flex items-center justify-around border-t border-rule bg-ink-2/95 p-2 backdrop-blur-md lg:hidden">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-around border-t border-rule bg-ink-2/95 p-2 backdrop-blur-md lg:hidden"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.5rem)' }}
+      >
         {visibleTabs.slice(0, 4).map((t) => {
           const isActive = activeTab === t.id;
           return (
@@ -1070,14 +1073,105 @@ export default function AdminGastronomy() {
             </button>
           );
         })}
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="flex flex-col items-center p-2 text-text-subtle"
-        >
-          <MenuIcon className="h-5 w-5" />
-          <span className="mono mt-1 text-[9px] uppercase tracking-[0.2em]">Más</span>
-        </button>
+        {visibleTabs.length > 4 && (
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-col items-center p-2"
+            style={{
+              color: visibleTabs.slice(4).some((t) => t.id === activeTab)
+                ? accentColor
+                : 'var(--color-text-subtle)',
+            }}
+          >
+            <MenuIcon className="h-5 w-5" />
+            <span className="mono mt-1 text-[9px] uppercase tracking-[0.2em]">Más</span>
+          </button>
+        )}
       </nav>
+
+      {/* MOBILE DRAWER */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-ink/80 backdrop-blur-sm lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'tween', duration: 0.25 }}
+              className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-[var(--radius-2xl)] border-t border-rule-strong bg-ink-2 p-6"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-6 flex items-center justify-between">
+                <Eyebrow>Más opciones</Eyebrow>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {visibleTabs.map((t) => {
+                  const isActive = activeTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setActiveTab(t.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`flex flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border p-4 text-center transition-colors ${
+                        isActive ? 'border-rule-strong bg-white/5' : 'border-rule bg-ink-3 hover:bg-white/[0.03]'
+                      }`}
+                      style={isActive ? { color: accentColor } : { color: 'var(--color-text-muted)' }}
+                    >
+                      <t.icon className="h-5 w-5" />
+                      <span className="text-[11px] capitalize">{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Rule className="my-6" />
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    toggleSound();
+                  }}
+                  className={`mono flex w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] py-3 text-[11px] uppercase tracking-[0.22em] ${
+                    isSoundEnabled ? 'bg-acid/10 text-acid' : 'bg-signal/10 text-signal-soft'
+                  }`}
+                >
+                  Sonido {isSoundEnabled ? 'on' : 'off'}
+                </button>
+                <button
+                  onClick={toggleStore}
+                  className={`mono flex w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] py-3 text-[11px] uppercase tracking-[0.22em] ${
+                    isOpen ? 'bg-acid/10 text-acid' : 'bg-signal/10 text-signal-soft'
+                  }`}
+                >
+                  Local {isOpen ? 'abierto' : 'cerrado'}
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="mono flex w-full items-center justify-center gap-2 py-3 text-[11px] uppercase tracking-[0.22em] text-text-subtle hover:text-text"
+                >
+                  <LogOut className="h-3.5 w-3.5" /> Salir
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MAIN */}
       <main className="h-screen flex-1 overflow-y-auto bg-ink p-4 pb-24 lg:p-8 lg:pb-8">

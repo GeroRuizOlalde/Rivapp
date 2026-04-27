@@ -9,7 +9,7 @@ import {
   Briefcase, ExternalLink, ChevronLeft, ChevronRight, Users, RefreshCw, Loader2,
   TrendingUp, Store, Save, MapPin, Image as ImageIcon, Upload, Camera, UserCog,
   ToggleLeft, ToggleRight, Tag, Bell, CreditCard, Crown, Check, X, Edit, Volume2,
-  VolumeX, LogOut, Inbox, PlayCircle,
+  VolumeX, LogOut, Inbox, PlayCircle, Menu as MenuIcon,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -116,6 +116,7 @@ export default function AdminServices() {
   } = useNotifications(store?.id, { soundEnabled: false });
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [services, setServices] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -651,7 +652,7 @@ export default function AdminServices() {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className="sticky top-0 flex h-screen w-full flex-col gap-6 overflow-y-auto border-r border-rule bg-ink-2 p-6 md:w-64">
+      <aside className="sticky top-0 hidden h-screen w-64 flex-col gap-6 overflow-y-auto border-r border-rule bg-ink-2 p-6 md:flex">
         <div className="flex items-center gap-3">
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-rule text-ink-text"
@@ -739,8 +740,129 @@ export default function AdminServices() {
         </div>
       </aside>
 
+      {/* Mobile bottom nav */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-around border-t border-rule bg-ink-2/95 p-2 backdrop-blur-md md:hidden"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.5rem)' }}
+      >
+        {visibleTabs.slice(0, 4).map((t) => {
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className="relative flex flex-col items-center p-2"
+              style={{ color: isActive ? accentColor : 'var(--color-text-subtle)' }}
+            >
+              <t.icon className="h-5 w-5" />
+              {t.id === 'inbox' && pendingAppointments.length > 0 && (
+                <span
+                  className="num absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold text-ink"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  {pendingAppointments.length}
+                </span>
+              )}
+              <span className="mono mt-1 text-[9px] uppercase tracking-[0.2em]">{t.label}</span>
+            </button>
+          );
+        })}
+        {visibleTabs.length > 4 && (
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-col items-center p-2"
+            style={{
+              color: visibleTabs.slice(4).some((t) => t.id === activeTab)
+                ? accentColor
+                : 'var(--color-text-subtle)',
+            }}
+          >
+            <MenuIcon className="h-5 w-5" />
+            <span className="mono mt-1 text-[9px] uppercase tracking-[0.2em]">Más</span>
+          </button>
+        )}
+      </nav>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-ink/80 backdrop-blur-sm md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'tween', duration: 0.25 }}
+              className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-[var(--radius-2xl)] border-t border-rule-strong bg-ink-2 p-6"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-6 flex items-center justify-between">
+                <Eyebrow>Más opciones</Eyebrow>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {visibleTabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`flex flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border p-4 text-center transition-colors ${
+                        isActive ? 'border-rule-strong bg-white/5' : 'border-rule bg-ink-3 hover:bg-white/[0.03]'
+                      }`}
+                      style={isActive ? { color: accentColor } : { color: 'var(--color-text-muted)' }}
+                    >
+                      <tab.icon className="h-5 w-5" />
+                      <span className="text-[11px] capitalize">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Rule className="my-6" />
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={toggleSound}
+                  className={`mono flex w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] py-3 text-[11px] uppercase tracking-[0.2em] ${
+                    isSoundEnabled ? 'bg-acid/10 text-acid' : 'bg-signal/10 text-signal-soft'
+                  }`}
+                >
+                  {isSoundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                  Sonido {isSoundEnabled ? 'on' : 'off'}
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('rivapp_session');
+                    navigate('/login');
+                  }}
+                  className="mono flex w-full items-center justify-center gap-2 py-3 text-[11px] uppercase tracking-[0.22em] text-text-subtle hover:text-text"
+                >
+                  <LogOut className="h-3.5 w-3.5" /> Salir
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main */}
-      <main className="h-screen flex-1 overflow-y-auto bg-ink p-6 md:p-10">
+      <main className="h-screen flex-1 overflow-y-auto bg-ink p-6 pb-28 md:p-10 md:pb-10">
         {activeTab === 'dashboard' && (
           <div className="space-y-8 anim-rise">
             <header className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
