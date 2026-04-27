@@ -340,7 +340,7 @@ export default function SuperAdmin() {
         </nav>
       </aside>
 
-      <main className="relative z-10 flex-1 p-6 lg:p-10">
+      <main className="relative z-10 flex-1 p-6 pb-28 lg:p-10 lg:pb-10">
         {/* DASHBOARD */}
         {activeView === 'dashboard' && (
           <div className="space-y-10 anim-rise">
@@ -1005,6 +1005,28 @@ export default function SuperAdmin() {
           </div>
         )}
       </main>
+
+      {/* Mobile bottom nav */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-rule bg-ink-2/95 backdrop-blur-md lg:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {navItems.map((item) => {
+          const isActive = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveView(item.id)}
+              className={`flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors ${
+                isActive ? 'text-acid' : 'text-text-subtle hover:text-text'
+              }`}
+            >
+              <item.icon className="h-5 w-5" />
+              <span className="mono text-[9px] uppercase tracking-[0.22em]">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
