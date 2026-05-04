@@ -9,6 +9,7 @@ import Button from '../components/shared/ui/Button';
 import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { validateName, validateSlug } from '../utils/validation';
 
 export default function CreateStore() {
   const navigate = useNavigate();
@@ -31,12 +32,23 @@ export default function CreateStore() {
   const handleCreate = async (e) => {
     e.preventDefault();
     setError(null);
+
+    const nameCheck = validateName(form.name, 'nombre del negocio');
+    const slugCheck = validateSlug(form.slug);
+    const firstError = [nameCheck, slugCheck].find((c) => !c.ok);
+    if (firstError) {
+      setError(firstError.error);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      if (!form.name.trim() || !form.slug.trim()) throw new Error('Completá el nombre de tu negocio.');
-
-      const { data: existing } = await supabase.from('stores').select('id').eq('slug', form.slug).single();
+      const { data: existing } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('slug', slugCheck.value)
+        .maybeSingle();
       if (existing) throw new Error('Esa URL ya está en uso. Probá con otro nombre.');
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -45,8 +57,8 @@ export default function CreateStore() {
       const { error: storeError } = await supabase.from('stores').insert([
         {
           owner_id: session.user.id,
-          name: form.name,
-          slug: form.slug,
+          name: nameCheck.value,
+          slug: slugCheck.value,
           business_type: form.type,
           plan_type: 'trial',
           subscription_status: 'active',
@@ -63,11 +75,11 @@ export default function CreateStore() {
         JSON.stringify({
           id: session.user.id,
           email: session.user.email,
-          slug: form.slug,
+          slug: slugCheck.value,
         })
       );
 
-      navigate(`/${form.slug}/admin`);
+      navigate(`/${slugCheck.value}/admin`);
     } catch (err) {
       setError(err.message);
     } finally {

@@ -14,6 +14,8 @@ const Register = lazy(() => import('./pages/Register'));
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
 const UpdatePassword = lazy(() => import('./pages/UpdatePassword'));
 const CreateStore = lazy(() => import('./pages/CreateStore'));
+const Terminos = lazy(() => import('./pages/Terminos'));
+const Privacidad = lazy(() => import('./pages/Privacidad'));
 
 // --- PAGINAS DEL SAAS (TIENDAS) ---
 const StoreHome = lazy(() => import('./pages/StoreHome'));
@@ -69,6 +71,9 @@ function App() {
             <Route path="/master-panel" element={<SuperAdmin />} />
 
             <Route path="/create-store" element={<CreateStore />} />
+
+            <Route path="/terminos" element={<Terminos />} />
+            <Route path="/privacidad" element={<Privacidad />} />
 
             <Route path="/tracking/:token" element={<Tracking />} />
 

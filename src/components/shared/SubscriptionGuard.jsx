@@ -5,9 +5,12 @@ import { supabase } from '../../supabase/client';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Star, Crown, Lock, Check, Loader2, ArrowUpRight } from 'lucide-react';
 import { appConfig, getWhatsAppUrl } from '../../config/appConfig';
+import { PLANS, PLAN_IDS } from '../../config/plans';
 import { logger } from '../../utils/logger';
 import Eyebrow from './ui/Eyebrow';
 import Rule from './ui/Rule';
+
+const formatPrice = (n) => `$${n.toLocaleString('es-AR')}`;
 
 export default function SubscriptionGuard({ children }) {
   const { store, loading: storeLoading, role } = useStore();
@@ -57,6 +60,8 @@ export default function SubscriptionGuard({ children }) {
     appConfig.supportWhatsApp,
     'Hola, ya realicé el pago de Rivapp y necesito reactivar mi suscripción.'
   );
+  const emprendedorPlan = PLANS[PLAN_IDS.EMPRENDEDOR];
+  const profesionalPlan = PLANS[PLAN_IDS.PROFESIONAL];
   const emprendedorLink = appConfig.mpSubscriptionLinks.emprendedor;
   const profesionalLink = appConfig.mpSubscriptionLinks.profesional;
 
@@ -94,23 +99,19 @@ export default function SubscriptionGuard({ children }) {
             Inicial
           </div>
           <Eyebrow>
-            <Star className="h-3 w-3" fill="currentColor" /> Emprendedor
+            <Star className="h-3 w-3" fill="currentColor" /> {emprendedorPlan.label}
           </Eyebrow>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="display num text-5xl text-text">$30.000</span>
+            <span className="display num text-5xl text-text">{formatPrice(emprendedorPlan.price)}</span>
             <span className="mono text-xs text-text-subtle">/ mes</span>
           </div>
           <Rule className="my-6" />
           <ul className="flex-1 space-y-3 text-sm text-text-muted">
-            <li className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" /> Hasta 100 turnos mensuales
-            </li>
-            <li className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" /> Agenda básica
-            </li>
-            <li className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" /> Link personalizado
-            </li>
+            {emprendedorPlan.features.map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" /> {f}
+              </li>
+            ))}
           </ul>
           {emprendedorLink ? (
             <a
@@ -138,28 +139,22 @@ export default function SubscriptionGuard({ children }) {
             <Crown className="h-5 w-5" fill="currentColor" />
           </div>
           <Eyebrow tone="acid">
-            <Star className="h-3 w-3" fill="currentColor" /> Profesional
+            <Star className="h-3 w-3" fill="currentColor" /> {profesionalPlan.label}
           </Eyebrow>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="display num text-6xl text-text">$40.000</span>
+            <span className="display num text-6xl text-text">{formatPrice(profesionalPlan.price)}</span>
             <span className="mono text-xs text-text-subtle">/ mes</span>
           </div>
           <p className="mono mt-4 rounded-[var(--radius-sm)] border border-acid/20 bg-acid/[0.05] p-3 text-[10px] uppercase tracking-[0.22em] text-acid">
             Ideal para crecer sin límites
           </p>
           <ul className="mt-6 flex-1 space-y-3 text-sm text-text">
-            <li className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" />{' '}
-              <span className="font-semibold">Turnos ilimitados</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" />{' '}
-              <span className="font-semibold">Gestión de equipo</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" />{' '}
-              <span className="font-semibold">Cupones y marketing</span>
-            </li>
+            {profesionalPlan.features.map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-acid" />{' '}
+                <span className="font-semibold">{f}</span>
+              </li>
+            ))}
           </ul>
           {profesionalLink ? (
             <a

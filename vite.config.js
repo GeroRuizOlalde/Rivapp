@@ -31,9 +31,10 @@ export default defineConfig({
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-db': ['@supabase/supabase-js'],
-          'vendor-charts': ['recharts', 'react-is'], // Agregamos react-is aquí también
-          'vendor-ui': ['framer-motion', 'lucide-react']
-        }
+          'vendor-charts': ['recharts', 'react-is'],
+          'vendor-ui': ['framer-motion', 'lucide-react'],
+          'vendor-maps': ['leaflet', 'react-leaflet', '@react-google-maps/api'],
+        },
       }
     }
   }

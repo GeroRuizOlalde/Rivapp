@@ -6,6 +6,7 @@ import {
   Percent, Rocket, Scissors, ShieldCheck, Sparkles, Utensils, Menu, X,
 } from 'lucide-react';
 import { appConfig, getWhatsAppUrl } from '../config/appConfig';
+import { PLANS, PLAN_IDS } from '../config/plans';
 import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
@@ -99,31 +100,17 @@ const faqs = [
 
 const plans = [
   {
-    title: 'Emprendedor',
+    title: PLANS[PLAN_IDS.EMPRENDEDOR].label,
     subtitle: 'Lo esencial para digitalizar la operación.',
-    price: 30000,
-    features: [
-      'Menú Digital / Agenda Web',
-      'Pedidos WhatsApp ilimitados',
-      'Gestión de stock y servicios',
-      'QR personalizado',
-      'Soporte por email',
-    ],
+    price: PLANS[PLAN_IDS.EMPRENDEDOR].price,
+    features: PLANS[PLAN_IDS.EMPRENDEDOR].features,
   },
   {
-    title: 'Profesional',
+    title: PLANS[PLAN_IDS.PROFESIONAL].label,
     subtitle: 'La configuración recomendada para crecer.',
-    price: 40000,
+    price: PLANS[PLAN_IDS.PROFESIONAL].price,
     recommended: true,
-    features: [
-      'Todo lo de Emprendedor',
-      'Integración Mercado Pago (0% com.)',
-      'Gestión de staff y riders',
-      'Envíos calculados por KM',
-      'Cupones y fidelización',
-      'Métricas de venta avanzadas',
-      'Soporte prioritario WhatsApp',
-    ],
+    features: PLANS[PLAN_IDS.PROFESIONAL].features,
   },
   {
     title: 'Corporativo',
@@ -821,6 +808,13 @@ export default function Landing() {
                 <ul className="grid gap-2 text-sm text-text-muted">
                   <li><Link to="/login" className="hover:text-text">Ingresar</Link></li>
                   <li><Link to="/register" className="hover:text-text">Crear cuenta</Link></li>
+                </ul>
+              </div>
+              <div>
+                <p className="eyebrow mb-4">Legal</p>
+                <ul className="grid gap-2 text-sm text-text-muted">
+                  <li><Link to="/terminos" className="hover:text-text">Términos</Link></li>
+                  <li><Link to="/privacidad" className="hover:text-text">Privacidad</Link></li>
                 </ul>
               </div>
             </div>

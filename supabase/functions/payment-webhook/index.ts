@@ -7,8 +7,13 @@
 // extiende `subscription_expiry` 30 días y deja la tienda activa.
 //
 // NO confundir con `mercadopago-webhook`, que cobra pedidos a clientes finales.
-// TODO: el plan_type queda hardcodeado en 'profesional' — si se vende
-// 'emprendedor' por separado hay que pasarlo en metadata desde create-checkout.
+//
+// ⚠️ TODO crítico: el plan_type queda hardcodeado en 'profesional'. Cuando se
+// vendan ambos planes, `create-checkout` debe poner el plan_id en
+// preference.metadata.plan_id, y acá leer paymentData.metadata.plan_id para
+// asignar el plan correcto. Hoy la fuente única de planes está en
+// src/config/plans.js (frontend) — usar los mismos IDs ('emprendedor' /
+// 'profesional').
 // ============================================================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"

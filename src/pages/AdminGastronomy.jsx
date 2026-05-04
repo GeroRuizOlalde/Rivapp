@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { ALL_TABS, BELL_SOUND } from './admin-gastronomy/constants';
 import { getContrastText, printZTicket } from './admin-gastronomy/utils';
+import { PLANS, PLAN_IDS } from '../config/plans';
 
 import DashboardTab from './admin-gastronomy/DashboardTab';
 import OrdersTab from './admin-gastronomy/OrdersTab';
@@ -824,16 +825,19 @@ export default function AdminGastronomy() {
     setShowPromoModal(false);
     fetchMenu();
   };
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (planId = PLAN_IDS.PROFESIONAL) => {
     if (!config?.id) return toast.error('No se identificó la tienda');
+    const plan = PLANS[planId];
+    if (!plan) return toast.error('Plan no reconocido');
     const btn = document.activeElement;
     if (btn) btn.innerText = 'Procesando...';
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: JSON.stringify({
           store_id: config.id,
-          price: 40000,
-          title: 'Suscripción Plan Profesional',
+          plan_id: plan.id,
+          price: plan.price,
+          title: `Suscripción Plan ${plan.label}`,
           domain_url: window.location.origin,
         }),
         headers: { 'Content-Type': 'application/json' },

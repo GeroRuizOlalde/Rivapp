@@ -1,12 +1,12 @@
 import { Check, ChevronRight, Crown } from 'lucide-react';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
+import { getPlan, isProTier, PLANS, PLAN_IDS } from '../../config/plans';
+
+const formatPrice = (n) => `$${n.toLocaleString('es-AR')}`;
 
 export default function BillingTab({ config, accentColor, onSubscribe }) {
-  const hasProPlan =
-    config.plan_type === 'pro' ||
-    config.plan_type === 'profesional' ||
-    config.subscription_status === 'active' ||
-    config.is_demo;
+  const currentPlan = getPlan(config.plan_type);
+  const onProTier = isProTier(config.plan_type) || config.is_demo;
 
   return (
     <div className="max-w-4xl anim-rise">
@@ -17,7 +17,7 @@ export default function BillingTab({ config, accentColor, onSubscribe }) {
         </h1>
       </header>
 
-      {hasProPlan ? (
+      {onProTier ? (
         <div
           className="relative overflow-hidden rounded-[var(--radius-2xl)] border p-10"
           style={{ borderColor: `${accentColor}40`, backgroundColor: `${accentColor}08` }}
@@ -33,10 +33,12 @@ export default function BillingTab({ config, accentColor, onSubscribe }) {
                   <Crown className="h-3 w-3" /> Pro
                 </span>
               </div>
-              <h2 className="display mt-4 text-6xl text-text">Profesional</h2>
+              <h2 className="display mt-4 text-6xl text-text">{currentPlan?.label || 'Profesional'}</h2>
             </div>
             <div className="text-right">
-              <p className="display num text-5xl text-text">$40.000</p>
+              <p className="display num text-5xl text-text">
+                {formatPrice(currentPlan?.price ?? PLANS[PLAN_IDS.PROFESIONAL].price)}
+              </p>
               <p className="mono mt-1 text-[11px] uppercase tracking-[0.22em] text-text-subtle">/ mes</p>
             </div>
           </div>
@@ -45,14 +47,13 @@ export default function BillingTab({ config, accentColor, onSubscribe }) {
         <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-[var(--radius-2xl)] border border-rule-strong bg-ink-2 p-8">
             <Eyebrow>Tu plan actual</Eyebrow>
-            <h2 className="display mt-4 text-4xl text-text">Emprendedor</h2>
+            <h2 className="display mt-4 text-4xl text-text">{currentPlan?.label || 'Sin plan'}</h2>
             <ul className="mt-8 space-y-3 text-sm text-text-muted">
-              <li className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-text-subtle" /> Menú digital y pedidos
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-text-subtle" /> Gestión básica
-              </li>
+              {(currentPlan?.features || []).slice(0, 3).map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-text-subtle" /> {f}
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -61,15 +62,17 @@ export default function BillingTab({ config, accentColor, onSubscribe }) {
             style={{ background: `linear-gradient(to bottom right, ${accentColor}, var(--color-ink))` }}
           >
             <div className="rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-8">
-              <Eyebrow style={{ color: accentColor }}>Plan Pro</Eyebrow>
-              <p className="display num mt-4 text-5xl text-text">$40.000</p>
+              <Eyebrow style={{ color: accentColor }}>{PLANS[PLAN_IDS.PROFESIONAL].label}</Eyebrow>
+              <p className="display num mt-4 text-5xl text-text">
+                {formatPrice(PLANS[PLAN_IDS.PROFESIONAL].price)}
+              </p>
               <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">/ mes</p>
               <button
                 onClick={onSubscribe}
                 className="mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold text-ink shadow-[var(--shadow-lift)]"
                 style={{ backgroundColor: accentColor }}
               >
-                Pasarme a Pro <ChevronRight className="h-4 w-4" />
+                Pasarme a Profesional <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>

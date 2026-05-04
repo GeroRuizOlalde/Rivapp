@@ -12,6 +12,7 @@ import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
+import { getLicenseState } from '../utils/storeStatus';
 
 export default function GlobalLogin() {
   const navigate = useNavigate();
@@ -81,7 +82,7 @@ export default function GlobalLogin() {
       } else {
         const { data: memberData } = await supabase
           .from('branch_memberships')
-          .select('role, branches(store_id, stores(slug, id, is_active))')
+          .select('role, branches(store_id, stores(slug, id, is_demo, subscription_status, subscription_expiry))')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -109,8 +110,12 @@ export default function GlobalLogin() {
         return;
       }
 
-      if (targetStore.is_active === false) {
-        throw new Error('Este negocio se encuentra suspendido. Contactá a soporte.');
+      const license = getLicenseState(targetStore);
+      if (license.key === 'suspended') {
+        throw new Error('La licencia de este negocio está suspendida. Contactá a soporte.');
+      }
+      if (license.key === 'expired') {
+        throw new Error('La licencia de este negocio venció. Renová tu suscripción para entrar.');
       }
 
       localStorage.setItem(

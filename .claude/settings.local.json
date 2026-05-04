@@ -14,7 +14,8 @@
       "Bash(grep -E \"\\\\.\\(js|ts\\)$\")",
       "Bash(npx skills *)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(sort -k2 -h)"
     ]
   }
 }

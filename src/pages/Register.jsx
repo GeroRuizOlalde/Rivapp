@@ -13,6 +13,7 @@ import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
+import { validateEmail, validateName, validatePassword, validateSlug } from '../utils/validation';
 
 const verticalOptions = [
   {
@@ -58,22 +59,34 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError(null);
+
+    const nameCheck = validateName(form.storeName, 'nombre del negocio');
+    const slugCheck = validateSlug(form.slug);
+    const emailCheck = validateEmail(form.email);
+    const passwordCheck = validatePassword(form.password);
+
+    const firstError = [nameCheck, slugCheck, emailCheck, passwordCheck].find((c) => !c.ok);
+    if (firstError) {
+      setError(firstError.error);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { data: existingStore } = await supabase
         .from('stores')
         .select('id')
-        .eq('slug', form.slug)
-        .single();
+        .eq('slug', slugCheck.value)
+        .maybeSingle();
 
       if (existingStore) {
-        throw new Error('Esa URL (slug) ya está en uso. Probá con otro nombre.');
+        throw new Error('Esa URL ya está en uso. Probá con otro nombre.');
       }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
+        email: emailCheck.value,
+        password: passwordCheck.value,
       });
 
       if (authError) throw authError;
@@ -82,8 +95,8 @@ export default function Register() {
       const { error: storeError } = await supabase.from('stores').insert([
         {
           owner_id: authData.user.id,
-          name: form.storeName,
-          slug: form.slug,
+          name: nameCheck.value,
+          slug: slugCheck.value,
           business_type: form.type,
           plan_type: 'trial',
           subscription_status: 'active',
@@ -99,16 +112,16 @@ export default function Register() {
         JSON.stringify({
           id: authData.user.id,
           email: authData.user.email,
-          slug: form.slug,
+          slug: slugCheck.value,
         })
       );
 
       try {
         await supabase.functions.invoke('send-welcome-email', {
           body: {
-            email: form.email,
-            storeName: form.storeName,
-            slug: form.slug,
+            email: emailCheck.value,
+            storeName: nameCheck.value,
+            slug: slugCheck.value,
             type: form.type === 'gastronomia' ? 'Gastronomía' : 'Turnos y Servicios',
           },
         });
@@ -117,7 +130,7 @@ export default function Register() {
       }
 
       toast.success('¡Cuenta creada con éxito! Te enviamos un correo de confirmación.', { duration: 6000 });
-      navigate(`/${form.slug}/admin`);
+      navigate(`/${slugCheck.value}/admin`);
     } catch (err) {
       logger.error(err);
       setError(err.message || 'Ocurrió un error inesperado.');
@@ -370,7 +383,11 @@ export default function Register() {
             </Button>
 
             <p className="mono text-center text-[10px] uppercase tracking-[0.22em] text-text-subtle">
-              Al continuar aceptás los términos de uso de Rivapp.
+              Al continuar aceptás los{' '}
+              <Link to="/terminos" className="text-acid hover:underline">términos</Link>
+              {' '}y la{' '}
+              <Link to="/privacidad" className="text-acid hover:underline">política de privacidad</Link>
+              {' '}de Rivapp.
             </p>
           </form>
         </motion.section>

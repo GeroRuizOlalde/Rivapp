@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { useStore } from '../context/useStore';
-import GastronomyHome from './GastronomyHome';
-import BookingHome from './BookingHome';
 import BranchSelector from '../components/shared/BranchSelector';
 import { Loader2, AlertCircle, MapPin, ArrowLeft } from 'lucide-react';
+
+const GastronomyHome = lazy(() => import('./GastronomyHome'));
+const BookingHome = lazy(() => import('./BookingHome'));
+
+const ChildLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-ink">
+    <Loader2 className="h-10 w-10 animate-spin text-acid" />
+  </div>
+);
 
 export default function StoreHome() {
   const { store, loading, error, branches, selectedBranch, selectBranch } = useStore();
@@ -72,7 +79,9 @@ export default function StoreHome() {
             </div>
           </div>
         )}
-        <RenderComponent />
+        <Suspense fallback={<ChildLoader />}>
+          <RenderComponent />
+        </Suspense>
       </div>
 
       {showBranchSelector && (

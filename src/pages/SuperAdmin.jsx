@@ -13,6 +13,8 @@ import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
 import { useConfirm } from '../components/shared/confirmContext';
+import { getLicenseState, isLicensed } from '../utils/storeStatus';
+import { getPlan, normalizePlanId, PLAN_IDS } from '../config/plans';
 
 export default function SuperAdmin() {
   const navigate = useNavigate();
@@ -173,6 +175,7 @@ export default function SuperAdmin() {
     setEditingStore({
       ...store,
       owner_email: store.owner_email || '',
+      subscription_status: store.subscription_status || 'active',
       expiry_date_input: store.subscription_expiry ? store.subscription_expiry.split('T')[0] : '',
     });
     setShowEditModal(true);
@@ -200,11 +203,10 @@ export default function SuperAdmin() {
         slug: cleanSlug,
         business_type: editingStore.business_type,
         owner_email: editingStore.owner_email,
-        is_active: editingStore.is_active,
         is_demo: editingStore.is_demo,
         plan_type: editingStore.plan_type,
         subscription_expiry: finalExpiry,
-        subscription_status: 'active',
+        subscription_status: editingStore.subscription_status || 'active',
       };
 
       const { error } = await supabase.from('stores').update(updateData).eq('id', editingStore.id);
@@ -301,9 +303,9 @@ export default function SuperAdmin() {
 
   const stats = {
     total: stores.filter((s) => !s.is_demo).length,
-    active: stores.filter((s) => s.is_active && !s.is_demo).length,
+    active: stores.filter((s) => isLicensed(s) && !s.is_demo).length,
     mrr: stores
-      .filter((s) => s.is_active && !s.is_demo)
+      .filter((s) => isLicensed(s) && !s.is_demo)
       .reduce((acc, curr) => acc + (Number(curr.subscription_price) || 0), 0),
     totalOrders: stores.reduce(
       (acc, s) => acc + (s.orders?.[0]?.count || 0) + (s.appointments?.[0]?.count || 0),
@@ -496,16 +498,24 @@ export default function SuperAdmin() {
             </div>
 
             <div className="grid gap-3">
-              {processedStores.map((s) => (
+              {processedStores.map((s) => {
+                const license = getLicenseState(s);
+                const licenseToneClass = license.tone === 'acid'
+                  ? 'text-acid'
+                  : license.tone === 'signal'
+                  ? 'text-signal'
+                  : 'text-text-muted';
+                const avatarClass = license.key === 'active' || license.key === 'demo'
+                  ? 'bg-ink-3 text-text'
+                  : 'bg-signal/10 text-signal-soft';
+                return (
                 <div
                   key={s.id}
                   className="group flex flex-col items-start justify-between gap-5 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-5 transition-colors hover:border-text-muted md:flex-row md:items-center"
                 >
                   <div className="flex w-full items-center gap-5 md:w-auto">
                     <div
-                      className={`display flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-xl ${
-                        s.is_active ? 'bg-ink-3 text-text' : 'bg-signal/10 text-signal-soft'
-                      }`}
+                      className={`display flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-xl ${avatarClass}`}
                     >
                       {s.name.substring(0, 2).toUpperCase()}
                     </div>
@@ -517,26 +527,35 @@ export default function SuperAdmin() {
                             Demo
                           </span>
                         )}
-                        <span
-                          className={`mono rounded-sm border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] ${
-                            s.plan_type === 'pro'
+                        {(() => {
+                          const planId = normalizePlanId(s.plan_type);
+                          const plan = getPlan(planId);
+                          const tone =
+                            planId === PLAN_IDS.PROFESIONAL
                               ? 'border-ml text-ml-soft'
-                              : s.plan_type === 'emprendedor'
+                              : planId === PLAN_IDS.EMPRENDEDOR
                               ? 'border-acid text-acid'
-                              : 'border-signal text-signal-soft'
-                          }`}
-                        >
-                          {s.plan_type === 'pro' ? 'Pro' : s.plan_type === 'emprendedor' ? 'Emprendedor' : 'Prueba'}
-                        </span>
+                              : 'border-signal text-signal-soft';
+                          return (
+                            <span
+                              className={`mono rounded-sm border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] ${tone}`}
+                            >
+                              {plan?.label || s.plan_type || 'Sin plan'}
+                            </span>
+                          );
+                        })()}
+                        {s.is_active === false && (
+                          <span className="mono rounded-sm border border-text-subtle/40 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-text-muted">
+                            Local cerrado
+                          </span>
+                        )}
                       </div>
                       <div className="mono mt-2 flex flex-wrap gap-3 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
                         <span className="inline-flex items-center gap-1 text-ml-soft">
                           <ListChecks className="h-3 w-3" /> {s.orders?.[0]?.count || 0} tx
                         </span>
                         <span>·</span>
-                        <span className={s.is_active ? 'text-acid' : 'text-signal'}>
-                          {s.is_active ? 'Activo' : 'Suspendido'}
-                        </span>
+                        <span className={licenseToneClass}>{license.label}</span>
                         {s.subscription_expiry && new Date(s.subscription_expiry) > new Date() && (
                           <>
                             <span>·</span>
@@ -570,7 +589,8 @@ export default function SuperAdmin() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -805,7 +825,7 @@ export default function SuperAdmin() {
                   >
                     <option value="trial">Prueba</option>
                     <option value="emprendedor">Emprendedor</option>
-                    <option value="pro">Profesional</option>
+                    <option value="profesional">Profesional</option>
                   </select>
                 </div>
 
@@ -824,7 +844,7 @@ export default function SuperAdmin() {
                   </div>
                 )}
 
-                {(newStoreData.plan_type === 'emprendedor' || newStoreData.plan_type === 'pro') && (
+                {(newStoreData.plan_type === 'emprendedor' || newStoreData.plan_type === 'profesional') && (
                   <div>
                     <label className="eyebrow mb-2 block">Meses pagados por adelantado</label>
                     <input
@@ -935,14 +955,15 @@ export default function SuperAdmin() {
                     </select>
                   </div>
                   <div>
-                    <label className="eyebrow mb-2 block">Estado</label>
+                    <label className="eyebrow mb-2 block">Licencia</label>
                     <select
                       className="mono w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text focus:border-ml focus:outline-none"
-                      value={editingStore.is_active}
-                      onChange={(e) => setEditingStore({ ...editingStore, is_active: e.target.value === 'true' })}
+                      value={editingStore.subscription_status || 'active'}
+                      onChange={(e) => setEditingStore({ ...editingStore, subscription_status: e.target.value })}
                     >
-                      <option value="true">Activo</option>
-                      <option value="false">Suspendido</option>
+                      <option value="active">Activa</option>
+                      <option value="suspended">Suspendida</option>
+                      <option value="expired">Vencida</option>
                     </select>
                   </div>
                 </div>
