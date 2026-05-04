@@ -65,17 +65,6 @@ entrypoint = "./functions/create-store-owner/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/create-store-owner/*.html" ]
 
-[functions.mp-webhook]
-enabled = true
-verify_jwt = true
-import_map = "./functions/mp-webhook/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/mp-webhook/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/mp-webhook/*.html" ]
-
 [functions.send-welcome-email]
 enabled = true
 verify_jwt = true

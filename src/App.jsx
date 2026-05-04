@@ -4,6 +4,8 @@ import { supabase } from './supabase/client';
 import { StoreProvider } from './context/StoreContext';
 import { logger } from './utils/logger';
 import AppErrorBoundary from './components/shared/AppErrorBoundary';
+import { ToastProvider } from './components/shared/Toaster';
+import { ConfirmProvider } from './components/shared/ConfirmDialog';
 
 // --- PAGINAS GLOBALES (Carga Diferida / Code Splitting) ---
 const Landing = lazy(() => import('./pages/Landing'));
@@ -55,8 +57,10 @@ function App() {
   return (
     <div className="app-container">
       <AppErrorBoundary>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
+        <ToastProvider>
+          <ConfirmProvider>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<GlobalLogin />} />
             <Route path="/register" element={<Register />} />
@@ -81,9 +85,11 @@ function App() {
               <Route path="rider" element={<Rider />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </ConfirmProvider>
+        </ToastProvider>
       </AppErrorBoundary>
     </div>
   );

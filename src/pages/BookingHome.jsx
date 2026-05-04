@@ -11,6 +11,7 @@ import Button from '../components/shared/ui/Button';
 import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { useToast } from '../components/shared/toastContext';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -90,6 +91,7 @@ function PaymentOption({ id, icon: Icon, label, hint, selected, onSelect }) {
 
 export default function BookingHome() {
   const { store } = useStore();
+  const toast = useToast();
   const [services, setServices] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [schedules, setSchedules] = useState([]);
@@ -115,10 +117,10 @@ export default function BookingHome() {
     const query = new URLSearchParams(window.location.search);
     if (query.get('status') === 'success') {
       window.history.replaceState({}, document.title, window.location.pathname);
-      alert('¡Pago recibido! Tu turno fue confirmado.');
+      toast.success('¡Pago recibido! Tu turno fue confirmado.', { duration: 6000 });
       setStep(1);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (!store) return;
@@ -288,7 +290,7 @@ export default function BookingHome() {
       .single();
     if (data) setAppliedCoupon(data);
     else {
-      alert('Cupón inválido o expirado');
+      toast.error('Cupón inválido o expirado');
       setAppliedCoupon(null);
     }
     setValidatingCoupon(false);
@@ -329,7 +331,7 @@ export default function BookingHome() {
         } else if (store.enable_multislots) {
           finalStaffId = staffList[0]?.id;
         } else {
-          alert('¡Ups! Ese horario acaba de ocuparse por completo.');
+          toast.warning('¡Ups! Ese horario acaba de ocuparse por completo.');
           setSaving(false);
           return;
         }
@@ -373,7 +375,7 @@ export default function BookingHome() {
 
         if (mpError) {
           logger.error('Error MP:', mpError);
-          alert('Error conectando con Mercado Pago. Reserva guardada.');
+          toast.warning('Error conectando con Mercado Pago. Reserva guardada.');
         } else if (mpData?.init_point) {
           window.location.href = mpData.init_point;
           return;
@@ -419,7 +421,7 @@ export default function BookingHome() {
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${store.phone || ''}&text=${encodedMsg}`;
       window.open(whatsappUrl, '_blank');
 
-      alert('¡Turno solicitado con éxito!');
+      toast.success('¡Turno solicitado con éxito!');
 
       setStep(1);
       setSelectedDate(null);
@@ -430,7 +432,7 @@ export default function BookingHome() {
       setCouponCode('');
     } catch (error) {
       logger.error(error);
-      alert('Error al reservar: ' + error.message);
+      toast.error('Error al reservar: ' + error.message);
     } finally {
       setSaving(false);
     }

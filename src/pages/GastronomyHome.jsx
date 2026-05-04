@@ -22,6 +22,7 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { useToast } from '../components/shared/toastContext';
 
 let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
 L.Marker.prototype.options.icon = DefaultIcon;
@@ -423,6 +424,7 @@ const ExtrasModal = ({ item, onClose, onConfirm, color }) => {
 const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, preloadedLocation }) => {
   const { cart, clearCart, removeItem, updateQuantity } = useCartStore();
   const { selectedBranch } = useStore();
+  const toast = useToast();
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -493,10 +495,10 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
   };
 
   const handleCheckout = async () => {
-    if (!customerName.trim()) return alert('Por favor escribí tu nombre.');
-    if (!customerPhone.trim()) return alert('Por favor escribí tu teléfono.');
+    if (!customerName.trim()) return toast.error('Por favor escribí tu nombre');
+    if (!customerPhone.trim()) return toast.error('Por favor escribí tu teléfono');
     if (deliveryMode === 'delivery' && !exactLocation)
-      return alert('Marcá tu ubicación en el mapa.');
+      return toast.error('Marcá tu ubicación en el mapa');
 
     setIsSending(true);
 
@@ -558,7 +560,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
 
         if (mpError) {
           logger.error('Error MP:', mpError);
-          alert('Error conectando con MP. Enviando como pedido normal.');
+          toast.warning('Error conectando con MP. Enviando como pedido normal.');
         } else if (mpData?.init_point) {
           window.location.href = mpData.init_point;
           return;
@@ -600,7 +602,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${adminPhone}&text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, '_blank');
     } catch (err) {
-      alert('Error al procesar el pedido: ' + err.message);
+      toast.error('Error al procesar el pedido: ' + err.message);
       logger.error(err);
     } finally {
       setIsSending(false);
@@ -983,6 +985,7 @@ export default function GastronomyHome() {
   const { menuItems, categories, loading } = useMenuData(config?.id, selectedBranch?.id);
   const { isOpen, loading: statusLoading } = useStoreStatus();
   const { clearCart } = useCartStore();
+  const toast = useToast();
 
   const brandColor = safeConfig.color_accent || '#D0FF00';
 
@@ -992,14 +995,14 @@ export default function GastronomyHome() {
 
     if (status === 'success' || status === 'pending') {
       window.history.replaceState({}, document.title, window.location.pathname);
-      alert(
-        status === 'success'
-          ? '¡Pago recibido! Estamos preparando tu pedido.'
-          : 'Pago en proceso. Te avisaremos cuando se confirme.'
-      );
+      if (status === 'success') {
+        toast.success('¡Pago recibido! Estamos preparando tu pedido.', { duration: 6000 });
+      } else {
+        toast.info('Pago en proceso. Te avisaremos cuando se confirme.', { duration: 6000 });
+      }
       clearCart();
     }
-  }, [clearCart]);
+  }, [clearCart, toast]);
 
   const isStoreOpen = useMemo(() => {
     if (!isOpen) return false;

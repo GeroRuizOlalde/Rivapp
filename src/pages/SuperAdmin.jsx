@@ -11,9 +11,13 @@ import { isPlatformAdmin } from '../utils/platformAdmin';
 import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { useToast } from '../components/shared/toastContext';
+import { useConfirm } from '../components/shared/confirmContext';
 
 export default function SuperAdmin() {
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [authorized, setAuthorized] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
 
@@ -150,7 +154,7 @@ export default function SuperAdmin() {
 
       if (storeError) throw new Error('Fallo al crear tienda: ' + storeError.message);
 
-      alert(`✅ Negocio "${newStoreData.name}" creado.`);
+      toast.success(`Negocio "${newStoreData.name}" creado`);
       setShowCreateModal(false);
       setNewStoreData({
         name: '', slug: '', business_type: 'gastronomia', owner_email: '',
@@ -159,7 +163,7 @@ export default function SuperAdmin() {
       fetchAllData();
     } catch (error) {
       logger.error(error);
-      alert('Error: ' + error.message);
+      toast.error('Error: ' + error.message);
     } finally {
       setCreating(false);
     }
@@ -206,49 +210,57 @@ export default function SuperAdmin() {
       const { error } = await supabase.from('stores').update(updateData).eq('id', editingStore.id);
 
       if (error) throw error;
-      alert('Negocio actualizado correctamente ✅');
+      toast.success('Negocio actualizado correctamente');
       setShowEditModal(false);
       setEditingStore(null);
       fetchAllData();
     } catch (error) {
-      alert('Error al actualizar: ' + error.message);
+      toast.error('Error al actualizar: ' + error.message);
     }
   };
 
   const deleteStore = async (id) => {
-    if (
-      !window.confirm(
-        '⚠️ ATENCIÓN CRÍTICA ⚠️\n\nEstás a punto de borrar este negocio.\n\nAl confirmar, se eliminará:\n- La tienda\n- Todos los pedidos/turnos\n- El menú/servicios\n- Los cupones\n\n¿Estás 100% seguro?'
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: 'Borrar negocio — acción irreversible',
+      message:
+        'Se eliminará la tienda, pedidos/turnos, menú/servicios y cupones. No se puede deshacer.',
+      confirmLabel: 'Borrar negocio',
+      danger: true,
+    });
+    if (!ok) return;
 
     setLoading(true);
     try {
       const { error } = await supabase.from('stores').delete().eq('id', id);
       if (error) throw error;
-      alert('✅ Tienda eliminada.');
+      toast.success('Tienda eliminada');
       fetchAllData();
     } catch (error) {
-      alert('❌ Error: ' + error.message);
+      toast.error('Error: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleResetDemos = async () => {
-    if (!confirm('⚠️ ¿Resetear demos?')) return;
+    const ok = await confirm({
+      title: '¿Resetear demos?',
+      message: 'Borra pedidos y turnos de todas las tiendas marcadas como demo.',
+      confirmLabel: 'Resetear',
+      danger: true,
+    });
+    if (!ok) return;
     const demoStores = stores.filter((s) => s.is_demo);
     const demoIds = demoStores.map((s) => s.id);
-    if (demoIds.length === 0) return alert('No hay demos.');
+    if (demoIds.length === 0) return toast.warning('No hay demos');
     setLoading(true);
     try {
       await supabase.from('orders').delete().in('store_id', demoIds);
       await supabase.from('appointments').delete().in('store_id', demoIds);
-      alert('¡Limpieza completada!');
+      toast.success('Limpieza completada');
       fetchAllData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      toast.error('Error: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -258,7 +270,7 @@ export default function SuperAdmin() {
     e.preventDefault();
     const { error } = await supabase.from('global_notifications').insert([newNotification]);
     if (!error) {
-      alert('Notificación enviada 🔔');
+      toast.success('Notificación enviada');
       setShowNotifyModal(false);
       setNewNotification({ title: '', message: '', target: 'all' });
       fetchAllData();
@@ -266,7 +278,12 @@ export default function SuperAdmin() {
   };
 
   const deleteNotification = async (id) => {
-    if (!window.confirm('¿Eliminar?')) return;
+    const ok = await confirm({
+      title: '¿Eliminar aviso?',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     await supabase.from('global_notifications').delete().eq('id', id);
     fetchAllData();
   };

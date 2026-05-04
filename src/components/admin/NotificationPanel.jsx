@@ -3,6 +3,7 @@ import {
   Bell, CheckCheck, Trash2, X, ShoppingBag, Calendar, Star, AlertTriangle,
   Users, CreditCard, Info,
 } from 'lucide-react';
+import { useConfirm } from '../shared/confirmContext';
 
 const TYPE_CONFIG = {
   new_order:          { icon: ShoppingBag,   tone: 'acid',   label: 'Pedido' },
@@ -46,6 +47,7 @@ export default function NotificationPanel({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef(null);
+  const confirm = useConfirm();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -92,8 +94,13 @@ export default function NotificationPanel({
               )}
               {notifications.length > 0 && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('¿Borrar todas las notificaciones?')) onClearAll();
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: '¿Borrar todas las notificaciones?',
+                      confirmLabel: 'Borrar todas',
+                      danger: true,
+                    });
+                    if (ok) onClearAll();
                   }}
                   className="rounded-[var(--radius-sm)] p-1.5 text-text-muted hover:bg-signal/10 hover:text-signal"
                   title="Borrar todas"

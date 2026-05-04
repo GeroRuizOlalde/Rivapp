@@ -11,9 +11,11 @@ import Button from '../components/shared/ui/Button';
 import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { useToast } from '../components/shared/toastContext';
 
 export default function GlobalLogin() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const inviteId = searchParams.get('invite');
 
@@ -132,7 +134,7 @@ export default function GlobalLogin() {
 
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      alert('Escribí tu email primero.');
+      toast.error('Escribí tu email primero');
       return;
     }
 
@@ -141,9 +143,9 @@ export default function GlobalLogin() {
     });
 
     if (resetError) {
-      alert(`Error: ${resetError.message}`);
+      toast.error(`Error: ${resetError.message}`);
     } else {
-      alert('Revisá tu correo para recuperar la contraseña.');
+      toast.success('Revisá tu correo para recuperar la contraseña', { duration: 6000 });
     }
   };
 

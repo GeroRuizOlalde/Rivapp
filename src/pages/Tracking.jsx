@@ -10,6 +10,7 @@ import { appConfig, getWhatsAppUrl } from '../config/appConfig';
 import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { useToast } from '../components/shared/toastContext';
 
 const StarRating = ({ rating, setRating, color }) => (
   <div className="mb-6 flex justify-center gap-2">
@@ -35,6 +36,7 @@ const StarRating = ({ rating, setRating, color }) => (
 
 export default function Tracking() {
   const { token } = useParams();
+  const toast = useToast();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -138,7 +140,7 @@ export default function Tracking() {
   }, [confirmOrderPayment, order]);
 
   const handleSubmitRating = async () => {
-    if (rating === 0) return alert('Elegí al menos una estrella');
+    if (rating === 0) return toast.error('Elegí al menos una estrella');
     setIsSubmitting(true);
     const { error } = await supabase.from('orders').update({ rating, review }).eq('tracking_token', token);
     if (!error) {

@@ -9,11 +9,15 @@ import {
 import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { useToast } from '../components/shared/toastContext';
+import { useConfirm } from '../components/shared/confirmContext';
 
 const MOTO_SOUND = '/sounds/moto.mp3';
 
 export default function Rider() {
   const { store } = useStore();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [riderInfo, setRiderInfo] = useState(null);
   const [pin, setPin] = useState('');
@@ -45,7 +49,7 @@ export default function Rider() {
       setRiderInfo(data);
       fetchDeliveries(data.id);
     } else {
-      alert('PIN incorrecto o usuario inactivo.');
+      toast.error('PIN incorrecto o usuario inactivo');
     }
   };
 
@@ -98,7 +102,7 @@ export default function Rider() {
       audioRef.current.play().then(() => {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
-        alert('Sonido activado');
+        toast.success('Sonido activado');
       });
     }
   };
@@ -121,7 +125,12 @@ export default function Rider() {
   };
 
   const markAsDelivered = async (id) => {
-    if (!window.confirm('¿Confirmás la entrega?')) return;
+    const ok = await confirm({
+      title: '¿Confirmás la entrega?',
+      message: 'Vas a marcar este pedido como entregado.',
+      confirmLabel: 'Confirmar entrega',
+    });
+    if (!ok) return;
     const { error } = await supabase.from('orders').update({ status: 'entregado' }).eq('id', id).eq('store_id', store.id);
     if (!error && riderInfo) fetchDeliveries(riderInfo.id);
   };

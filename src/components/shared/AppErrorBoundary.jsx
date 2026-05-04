@@ -1,5 +1,6 @@
 import React from 'react';
 import { logger } from '../../utils/logger';
+import { captureError } from '../../utils/sentry';
 
 export default class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,6 +14,7 @@ export default class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     logger.error('Unhandled UI error', error, info);
+    captureError(error, { componentStack: info?.componentStack });
   }
 
   render() {

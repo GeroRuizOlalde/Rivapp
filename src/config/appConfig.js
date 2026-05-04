@@ -20,6 +20,12 @@ export const appConfig = {
     profesional: import.meta.env.VITE_MP_SUBSCRIPTION_LINK_PROFESIONAL?.trim() || '',
   },
   enableDebugLogs: import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true',
+  isProd: import.meta.env.PROD,
+  sentryDsn: import.meta.env.VITE_SENTRY_DSN?.trim() || '',
+  sentryEnvironment:
+    import.meta.env.VITE_SENTRY_ENVIRONMENT?.trim() ||
+    (import.meta.env.PROD ? 'production' : 'development'),
+  sentryRelease: import.meta.env.VITE_SENTRY_RELEASE?.trim() || '',
 };
 
 export const buildAppUrl = (path = '') => {

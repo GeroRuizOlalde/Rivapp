@@ -12,6 +12,7 @@ import Button from '../components/shared/ui/Button';
 import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import { useToast } from '../components/shared/toastContext';
 
 const verticalOptions = [
   {
@@ -32,6 +33,7 @@ const verticalOptions = [
 
 export default function Register() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -114,7 +116,7 @@ export default function Register() {
         logger.warn('El usuario se creó, pero falló el envío del mail:', mailError);
       }
 
-      alert('¡Cuenta creada con éxito! Te enviamos un correo de confirmación.');
+      toast.success('¡Cuenta creada con éxito! Te enviamos un correo de confirmación.', { duration: 6000 });
       navigate(`/${form.slug}/admin`);
     } catch (err) {
       logger.error(err);

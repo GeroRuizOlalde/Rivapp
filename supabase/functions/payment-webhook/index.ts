@@ -1,3 +1,16 @@
+// ============================================================================
+// payment-webhook — Cobros de SUSCRIPCIÓN del SaaS (dueños hacia Rivapp)
+// ============================================================================
+// Recibe notificaciones de MP por pagos de planes Rivapp hechos por dueños de
+// tienda. Usa la cuenta MP MASTER (env MP_ACCESS_TOKEN). El external_reference
+// del pago es el store_id que se setea en `create-checkout`. Al confirmarse,
+// extiende `subscription_expiry` 30 días y deja la tienda activa.
+//
+// NO confundir con `mercadopago-webhook`, que cobra pedidos a clientes finales.
+// TODO: el plan_type queda hardcodeado en 'profesional' — si se vende
+// 'emprendedor' por separado hay que pasarlo en metadata desde create-checkout.
+// ============================================================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 

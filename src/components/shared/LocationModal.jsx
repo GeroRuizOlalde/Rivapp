@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
 import { useStore } from '../../context/useStore';
 import { logger } from '../../utils/logger';
+import { useToast } from './Toaster';
 // Importamos la utilidad de distancia (Asegúrate que la ruta sea correcta)
-import { getDistanceFromLatLonInKm } from '../../utils/geolocation'; 
+import { getDistanceFromLatLonInKm } from '../../utils/geolocation';
 
 export default function LocationModal() {
   // 1. Traemos 'branches' y 'selectBranch' del contexto
   const { userLocation, setUserLocation, store, branches, selectBranch } = useStore();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [tempAddress, setTempAddress] = useState("");
@@ -76,7 +78,7 @@ export default function LocationModal() {
       },
       (error) => {
         logger.error(error);
-        alert("No se pudo detectar el GPS. Ingresa tu dirección manualmente.");
+        toast.error('No se pudo detectar el GPS. Ingresá tu dirección manualmente.');
         setManualMode(true);
         setLoading(false);
       },

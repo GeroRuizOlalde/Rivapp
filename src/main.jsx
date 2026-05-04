@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
+import { initSentry } from './utils/sentry';
+
+initSentry();
 
 // Quitamos el StoreProvider de acá porque ya lo tenés en App.jsx envolviendo 
 // específicamente las rutas que lo necesitan. Menos carga inicial = más velocidad.

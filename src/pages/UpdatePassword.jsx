@@ -5,9 +5,11 @@ import { Lock, Save, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import Button from '../components/shared/ui/Button';
 import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
+import { useToast } from '../components/shared/toastContext';
 
 export default function UpdatePassword() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -27,7 +29,7 @@ export default function UpdatePassword() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
 
-      alert('¡Contraseña actualizada con éxito!');
+      toast.success('¡Contraseña actualizada con éxito!');
       navigate('/');
     } catch (err) {
       setError(err.message);

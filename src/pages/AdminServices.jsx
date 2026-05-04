@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import NotificationPanel from '../components/admin/NotificationPanel';
 import NotificationToast from '../components/admin/NotificationToast';
 import { useNotifications, NOTIFICATION_TAB_MAP } from '../hooks/useNotifications';
+import { useToast } from '../components/shared/toastContext';
+import { useConfirm } from '../components/shared/confirmContext';
 import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
@@ -104,6 +106,8 @@ export default function AdminServices() {
   const { store } = useStore();
   const { features, canAccessAdmin } = useEntitlements(store);
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const {
     notifications: storeNotifications,
     unreadCount,
@@ -396,7 +400,13 @@ export default function AdminServices() {
 
   const handleDeleteAppointment = async (id, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm('¿Borrar turno permanentemente?')) return;
+    const ok = await confirm({
+      title: '¿Borrar turno?',
+      message: 'Esta acción es permanente.',
+      confirmLabel: 'Borrar',
+      danger: true,
+    });
+    if (!ok) return;
     await supabase.from('appointments').delete().eq('id', id).eq('store_id', store.id);
     fetchAppointments();
     if (crmModal?.id === id) setCrmModal(null);
@@ -429,7 +439,7 @@ export default function AdminServices() {
         enable_payments: profileForm.enable_payments,
       })
       .eq('id', store.id);
-    alert('Perfil guardado');
+    toast.success('Perfil guardado');
   };
 
   const handleSaveSchedule = async () => {
@@ -448,7 +458,7 @@ export default function AdminServices() {
         max_concurrent_slots: slotsConfig.max_concurrent_slots,
       })
       .eq('id', store.id);
-    alert('Configuración guardada ✅');
+    toast.success('Configuración guardada');
   };
 
   const handleFileChange = async (e, f, setter = setProfileForm) => {
@@ -462,8 +472,8 @@ export default function AdminServices() {
       const { data } = supabase.storage.from('store-assets').getPublicUrl(name);
       if (f === 'avatar_url') setter((p) => ({ ...p, avatar_url: data.publicUrl }));
       else setter((p) => ({ ...p, [f]: data.publicUrl }));
-    } catch (e) {
-      alert(e.message);
+    } catch (err) {
+      toast.error(err.message);
     }
     setUploading(false);
   };
@@ -497,7 +507,12 @@ export default function AdminServices() {
   };
 
   const deleteService = async (id) => {
-    if (confirm('¿Borrar?')) {
+    const ok = await confirm({
+      title: '¿Borrar servicio?',
+      confirmLabel: 'Borrar',
+      danger: true,
+    });
+    if (ok) {
       await supabase.from('services').delete().eq('id', id).eq('store_id', store.id);
       fetchServices();
     }
@@ -523,7 +538,12 @@ export default function AdminServices() {
   };
 
   const deleteStaff = async (id) => {
-    if (confirm('¿Borrar?')) {
+    const ok = await confirm({
+      title: '¿Quitar miembro del equipo?',
+      confirmLabel: 'Quitar',
+      danger: true,
+    });
+    if (ok) {
       await supabase.from('staff').update({ active: false }).eq('id', id).eq('store_id', store.id);
       fetchStaff();
     }
@@ -540,7 +560,12 @@ export default function AdminServices() {
   };
 
   const deleteCoupon = async (id) => {
-    if (confirm('¿Borrar?')) {
+    const ok = await confirm({
+      title: '¿Borrar cupón?',
+      confirmLabel: 'Borrar',
+      danger: true,
+    });
+    if (ok) {
       await supabase.from('coupons').update({ active: false }).eq('id', id).eq('store_id', store.id);
       fetchCoupons();
     }
@@ -566,7 +591,7 @@ export default function AdminServices() {
     ]);
     setShowManualModal(false);
     fetchAppointments();
-    alert('Turno creado');
+    toast.success('Turno creado');
   };
 
   const handleSubscribe = async () => {};

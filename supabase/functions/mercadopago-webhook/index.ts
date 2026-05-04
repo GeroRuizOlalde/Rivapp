@@ -1,3 +1,14 @@
+// ============================================================================
+// mercadopago-webhook — Cobros de CLIENTES FINALES hacia TIENDAS
+// ============================================================================
+// Recibe notificaciones de MP por pagos hechos por clientes a tiendas (pedidos
+// de gastronomía y turnos). Multi-tenant: usa el access_token de cada tienda
+// guardado en `store_secrets`. Se llama vía URL con ?store_id=... que arma
+// `create-order-preference` al generar la preferencia de pago.
+//
+// NO confundir con `payment-webhook`, que cobra la SUSCRIPCIÓN del SaaS.
+// ============================================================================
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 

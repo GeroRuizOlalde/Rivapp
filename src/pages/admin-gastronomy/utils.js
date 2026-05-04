@@ -11,7 +11,7 @@ export const getContrastText = (hexcolor) => {
 
 export const printZTicket = (totals, storeName) => {
   const popupWin = window.open('', '_blank', 'width=350,height=600');
-  if (!popupWin) return alert('Por favor permite ventanas emergentes para imprimir.');
+  if (!popupWin) return false;
 
   const now = new Date();
   const html = `
@@ -47,4 +47,5 @@ export const printZTicket = (totals, storeName) => {
 
   popupWin.document.write(html);
   popupWin.document.close();
+  return true;
 };

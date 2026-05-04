@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import AdminBranchSelector from '../components/admin/AdminBranchSelector';
 import NotificationToast from '../components/admin/NotificationToast';
 import { useNotifications, NOTIFICATION_TAB_MAP } from '../hooks/useNotifications';
+import { useToast } from '../components/shared/toastContext';
+import { useConfirm } from '../components/shared/confirmContext';
 import { logger } from '../utils/logger';
 
 import { Lock, Store, ArrowRight, Loader2, LogOut, Menu as MenuIcon, Bell, X } from 'lucide-react';
@@ -39,6 +41,8 @@ export default function AdminGastronomy() {
   const { store: config, refreshStore, role } = useStore();
   const { features, canAccessAdmin } = useEntitlements(config);
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const {
     notifications: storeNotifications,
     unreadCount,
@@ -459,7 +463,7 @@ export default function AdminGastronomy() {
 
   const handleSaveBranch = async (e) => {
     e.preventDefault();
-    if (!branchForm.name) return alert('El nombre es obligatorio');
+    if (!branchForm.name) return toast.error('El nombre es obligatorio');
     const payload = {
       store_id: config.id,
       name: branchForm.name,
@@ -482,16 +486,26 @@ export default function AdminGastronomy() {
       setEditingBranch(null);
       setBranchForm({ name: '', address: '', phone: '', lat: '', lng: '' });
     } catch (error) {
-      alert('Error al guardar: ' + error.message);
+      toast.error('Error al guardar: ' + error.message);
     }
   };
   const handleDeleteBranch = async (id) => {
-    if (!window.confirm('¿Seguro que querés eliminar?')) return;
+    const ok = await confirm({
+      title: '¿Eliminar sucursal?',
+      message: 'Esta acción la desactiva del listado.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     await supabase.from('branches').update({ is_active: false }).eq('id', id);
     setBranches((prev) => prev.filter((b) => b.id !== id));
   };
   const handleSetMainBranch = async (branchId) => {
-    if (!window.confirm('¿Marcar principal?')) return;
+    const ok = await confirm({
+      title: '¿Marcar como sucursal principal?',
+      confirmLabel: 'Marcar principal',
+    });
+    if (!ok) return;
     await supabase.from('branches').update({ is_main: false }).eq('store_id', config.id);
     await supabase.from('branches').update({ is_main: true }).eq('id', branchId);
     setBranches((prev) => prev.map((b) => ({ ...b, is_main: b.id === branchId })));
@@ -500,7 +514,7 @@ export default function AdminGastronomy() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((pos) => {
         setBranchForm((prev) => ({ ...prev, lat: pos.coords.latitude, lng: pos.coords.longitude }));
-        alert('Ubicación detectada');
+        toast.success('Ubicación detectada');
       });
     }
   };
@@ -518,16 +532,16 @@ export default function AdminGastronomy() {
         })
         .eq('id', viewBranchId);
       if (error) throw error;
-      alert('Datos actualizados!');
+      toast.success('Datos actualizados');
       fetchBranches();
     } catch (err) {
-      alert('Error: ' + err.message);
+      toast.error('Error: ' + err.message);
     }
   };
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    if (!newProduct.name) return alert('Falta el nombre');
+    if (!newProduct.name) return toast.error('Falta el nombre');
     const productToSave = {
       ...newProduct,
       store_id: config.id,
@@ -536,7 +550,7 @@ export default function AdminGastronomy() {
     };
     const { error } = await supabase.from('menu').insert([productToSave]);
     if (!error) {
-      alert('Plato creado!');
+      toast.success('Plato creado');
       setShowCreateModal(false);
       setNewProduct({
         name: '', description: '', price: '', category: '', image: '',
@@ -551,14 +565,20 @@ export default function AdminGastronomy() {
     if (!editingProduct) return;
     const { error } = await supabase.from('menu').update(editingProduct).eq('id', editingProduct.id).eq('store_id', config.id);
     if (!error) {
-      alert('Actualizado!');
+      toast.success('Actualizado');
       setShowEditProductModal(false);
       setEditingProduct(null);
       fetchMenu();
     }
   };
   const deleteProduct = async (id) => {
-    if (window.confirm('¿Borrar?')) {
+    const ok = await confirm({
+      title: '¿Borrar plato?',
+      message: 'Se quita del menú permanentemente.',
+      confirmLabel: 'Borrar',
+      danger: true,
+    });
+    if (ok) {
       await supabase.from('menu').delete().eq('id', id).eq('store_id', config.id);
       fetchMenu();
     }
@@ -583,7 +603,12 @@ export default function AdminGastronomy() {
     fetchOrders();
   };
   const handleMarkAsPaid = async (id) => {
-    if (!window.confirm('¿Confirmar que el cliente pagó?')) return;
+    const ok = await confirm({
+      title: '¿Confirmar pago?',
+      message: 'Vas a marcar este pedido como pagado por el cliente.',
+      confirmLabel: 'Marcar pagado',
+    });
+    if (!ok) return;
     await supabase
       .from('orders')
       .update({ paid: true, payment_status: 'paid' })
@@ -614,17 +639,25 @@ export default function AdminGastronomy() {
     popupWin.document.close();
   };
   const handleCloseRegister = async () => {
-    if (!window.confirm('¿Cerrar caja?')) return;
+    const ok = await confirm({
+      title: '¿Cerrar caja?',
+      message: 'Se archivan todos los pedidos del día y se imprime ticket Z.',
+      confirmLabel: 'Cerrar caja',
+    });
+    if (!ok) return;
     const validOrders = orders.filter((o) => o.status !== 'rechazado' && o.status !== 'archivado');
-    if (validOrders.length === 0) return alert('No hay pedidos para cerrar.');
+    if (validOrders.length === 0) return toast.warning('No hay pedidos para cerrar');
     const totalRevenue = validOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     const cashTotal = validOrders
       .filter((o) => o.payment_method === 'efectivo')
       .reduce((sum, o) => sum + (o.total || 0), 0);
-    printZTicket(
+    const printed = printZTicket(
       { count: validOrders.length, total: totalRevenue, cash: cashTotal, digital: totalRevenue - cashTotal },
       settingsForm.store_name
     );
+    if (!printed) {
+      toast.warning('Permití ventanas emergentes para imprimir el ticket Z');
+    }
     await supabase.from('orders').update({ status: 'archivado' }).eq('store_id', config.id).neq('status', 'archivado');
     setOrders([]);
     fetchHistory(true);
@@ -640,7 +673,7 @@ export default function AdminGastronomy() {
       if (isEditing) setEditingProduct((prev) => ({ ...prev, image: data.publicUrl }));
       else setNewProduct((prev) => ({ ...prev, image: data.publicUrl }));
     } catch {
-      alert('Error subiendo imagen');
+      toast.error('Error subiendo imagen');
     }
     setUploadingImage(false);
   };
@@ -655,7 +688,7 @@ export default function AdminGastronomy() {
       if (type === 'logo') setSettingsForm((prev) => ({ ...prev, logo_url: data.publicUrl }));
       if (type === 'banner') setSettingsForm((prev) => ({ ...prev, banner_url: data.publicUrl }));
     } catch {
-      alert('Error subiendo imagen');
+      toast.error('Error subiendo imagen');
     }
     setUploadingImage(false);
   };
@@ -678,11 +711,11 @@ export default function AdminGastronomy() {
       };
       const { error: dbError } = await supabase.from('stores').update(updates).eq('id', config.id);
       if (dbError) throw dbError;
-      alert('Guardado correctamente!');
+      toast.success('Guardado correctamente');
       if (refreshStore) refreshStore();
     } catch (error) {
       logger.error(error);
-      alert('Error al guardar: ' + error.message);
+      toast.error('Error al guardar: ' + error.message);
     }
   };
 
@@ -702,7 +735,12 @@ export default function AdminGastronomy() {
     fetchRiders();
   };
   const deleteRider = async (id) => {
-    if (window.confirm('¿Borrar?')) {
+    const ok = await confirm({
+      title: '¿Borrar rider?',
+      confirmLabel: 'Borrar',
+      danger: true,
+    });
+    if (ok) {
       await supabase.from('riders').delete().eq('id', id).eq('store_id', config.id);
       fetchRiders();
     }
@@ -726,13 +764,23 @@ export default function AdminGastronomy() {
     fetchCoupons();
   };
   const deleteCoupon = async (id) => {
-    if (window.confirm('¿Borrar?')) {
+    const ok = await confirm({
+      title: '¿Borrar cupón?',
+      confirmLabel: 'Borrar',
+      danger: true,
+    });
+    if (ok) {
       await supabase.from('coupons').update({ active: false }).eq('id', id).eq('store_id', config.id);
       fetchCoupons();
     }
   };
   const handleBulkPriceUpdate = async () => {
-    if (!window.confirm('¿Seguro?')) return;
+    const ok = await confirm({
+      title: '¿Aplicar cambio masivo de precios?',
+      message: 'Vas a actualizar el precio de todos los productos del menú.',
+      confirmLabel: 'Aplicar',
+    });
+    if (!ok) return;
     const updates = menuItems.map((item) => {
       let cPrice = parseFloat(item.price),
         nPrice = cPrice,
@@ -777,7 +825,7 @@ export default function AdminGastronomy() {
     fetchMenu();
   };
   const handleSubscribe = async () => {
-    if (!config?.id) return alert('Error: No se identificó la tienda.');
+    if (!config?.id) return toast.error('No se identificó la tienda');
     const btn = document.activeElement;
     if (btn) btn.innerText = 'Procesando...';
     try {
@@ -792,15 +840,15 @@ export default function AdminGastronomy() {
       });
       if (error) throw new Error(error.message || 'Falló la función');
       if (data?.init_point) window.open(data.init_point, '_blank');
-      else alert('Mercado Pago no devolvió el link.');
+      else toast.error('Mercado Pago no devolvió el link');
     } catch {
-      alert('Error de conexión.');
+      toast.error('Error de conexión');
     } finally {
       if (btn) btn.innerText = 'Pasarme a PRO';
     }
   };
   const exportCustomers = () => {
-    if (customers.length === 0) return alert('No hay datos.');
+    if (customers.length === 0) return toast.warning('No hay datos para exportar');
     const headers = ['Cliente', 'Telefono', 'Pedidos Totales', 'Inversion Total', 'Ultima Compra'];
     const csvContent = [
       headers.join(';'),
@@ -844,13 +892,24 @@ export default function AdminGastronomy() {
     fetchOrders();
   };
   const handleDeleteSingleOrder = async (id) => {
-    if (window.confirm('¿Borrar?')) {
+    const ok = await confirm({
+      title: '¿Borrar pedido?',
+      confirmLabel: 'Borrar',
+      danger: true,
+    });
+    if (ok) {
       await supabase.from('orders').delete().eq('id', id).eq('store_id', config.id);
       fetchHistory(true);
     }
   };
   const handleDeleteAllHistory = async () => {
-    if (window.confirm('¿Vaciar todo?')) {
+    const ok = await confirm({
+      title: '¿Vaciar todo el historial?',
+      message: 'Borra todos los pedidos archivados, rechazados y entregados. No se puede deshacer.',
+      confirmLabel: 'Vaciar',
+      danger: true,
+    });
+    if (ok) {
       await supabase
         .from('orders')
         .delete()
@@ -862,7 +921,7 @@ export default function AdminGastronomy() {
 
   const handleInviteMember = async (e) => {
     e.preventDefault();
-    if (!newMember.email) return alert('Falta el email');
+    if (!newMember.email) return toast.error('Falta el email');
     const btn = document.activeElement;
     const originalText = btn.innerText;
     btn.innerText = 'Enviando...';
@@ -895,22 +954,27 @@ export default function AdminGastronomy() {
       });
       if (fnError) {
         logger.error('Error enviando mail:', fnError);
-        alert('Invitación guardada, pero falló el envío del correo.');
+        toast.warning('Invitación guardada, pero falló el envío del correo');
       } else {
-        alert(`Invitación enviada a ${newMember.email}!`);
+        toast.success(`Invitación enviada a ${newMember.email}`);
       }
       setShowTeamModal(false);
       setNewMember({ email: '', role: 'staff', branch_id: '' });
       fetchTeamInvites();
     } catch (err) {
-      alert('Error: ' + err.message);
+      toast.error('Error: ' + err.message);
     } finally {
       btn.innerText = originalText;
       btn.disabled = false;
     }
   };
   const handleDeleteInvite = async (id) => {
-    if (!window.confirm('¿Eliminar invitación?')) return;
+    const ok = await confirm({
+      title: '¿Eliminar invitación?',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     await supabase.from('team_invitations').delete().eq('id', id);
     fetchTeamInvites();
   };
