@@ -1,10 +1,10 @@
-import { Check, ChevronRight, Crown } from 'lucide-react';
+import { Check, ChevronRight, Crown, Loader2 } from 'lucide-react';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
 import { getPlan, isProTier, PLANS, PLAN_IDS } from '../../config/plans';
 
 const formatPrice = (n) => `$${n.toLocaleString('es-AR')}`;
 
-export default function BillingTab({ config, accentColor, onSubscribe }) {
+export default function BillingTab({ config, accentColor, onSubscribe, isSubscribing = false }) {
   const currentPlan = getPlan(config.plan_type);
   const onProTier = isProTier(config.plan_type) || config.is_demo;
 
@@ -68,11 +68,18 @@ export default function BillingTab({ config, accentColor, onSubscribe }) {
               </p>
               <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">/ mes</p>
               <button
-                onClick={onSubscribe}
-                className="mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold text-ink shadow-[var(--shadow-lift)]"
+                onClick={() => onSubscribe?.(PLAN_IDS.PROFESIONAL)}
+                disabled={isSubscribing}
+                className="mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold text-ink shadow-[var(--shadow-lift)] disabled:opacity-60"
                 style={{ backgroundColor: accentColor }}
               >
-                Pasarme a Profesional <ChevronRight className="h-4 w-4" />
+                {isSubscribing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    Pasarme a Profesional <ChevronRight className="h-4 w-4" />
+                  </>
+                )}
               </button>
             </div>
           </div>

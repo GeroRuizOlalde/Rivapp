@@ -124,6 +124,7 @@ export default function AdminServices() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
   const [services, setServices] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -138,6 +139,26 @@ export default function AdminServices() {
   useEffect(() => {
     soundEnabledRef.current = isSoundEnabled;
   }, [isSoundEnabled]);
+
+  // Detecta retorno de Mercado Pago tras pagar suscripción
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    if (!payment) return;
+
+    if (payment === 'success') {
+      toast.success('¡Pago recibido! Tu plan se está actualizando…', { duration: 6000 });
+      if (refreshStore) refreshStore();
+    } else if (payment === 'pending') {
+      toast.info('Pago en proceso. Te avisamos cuando se confirme.', { duration: 6000 });
+    } else if (payment === 'failure') {
+      toast.error('El pago no se completó. Probá de nuevo cuando puedas.');
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('payment');
+    window.history.replaceState({}, document.title, url.toString());
+  }, [toast, refreshStore]);
 
   const isFirstLoad = useRef(true);
   const prevAppointmentsCount = useRef(0);
@@ -603,7 +624,36 @@ export default function AdminServices() {
     toast.success('Turno creado');
   };
 
-  const handleSubscribe = async () => {};
+  const handleSubscribe = async (planId = PLAN_IDS.PROFESIONAL) => {
+    if (!store?.id || !store?.slug) return toast.error('No se identificó la tienda');
+    const plan = PLANS[planId];
+    if (!plan) return toast.error('Plan no reconocido');
+    setIsSubscribing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          store_id: store.id,
+          slug: store.slug,
+          plan_id: plan.id,
+          price: plan.price,
+          title: `Suscripción Plan ${plan.label}`,
+          domain_url: window.location.origin,
+        },
+      });
+      if (error) throw new Error(error.message || 'Falló la función');
+      if (data?.error) throw new Error(data.error);
+      if (data?.init_point) {
+        window.location.href = data.init_point;
+        return;
+      }
+      toast.error('Mercado Pago no devolvió el link');
+    } catch (err) {
+      logger.error('Error en handleSubscribe', err);
+      toast.error('Error al iniciar el pago: ' + (err.message || 'desconocido'));
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   const getDaysInMonth = (date) => {
     const days = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -1375,11 +1425,18 @@ export default function AdminServices() {
                         {formatPrice(PLANS[PLAN_IDS.PROFESIONAL].price)}
                       </p>
                       <button
-                        onClick={handleSubscribe}
-                        className="mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold text-ink"
+                        onClick={() => handleSubscribe(PLAN_IDS.PROFESIONAL)}
+                        disabled={isSubscribing}
+                        className="mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold text-ink disabled:opacity-60"
                         style={{ backgroundColor: accentColor }}
                       >
-                        Pasarme a Profesional <ChevronRight className="h-4 w-4" />
+                        {isSubscribing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            Pasarme a Profesional <ChevronRight className="h-4 w-4" />
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>

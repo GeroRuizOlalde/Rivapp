@@ -122,6 +122,7 @@ export default function AdminGastronomy() {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [showPromoModal, setShowPromoModal] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   const [selectedOrderForRider, setSelectedOrderForRider] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
@@ -286,6 +287,27 @@ export default function AdminGastronomy() {
     setGlobalNotifications((prev) => prev.filter((n) => n.id !== id));
     if (activeAlert?.id === id) setActiveAlert(null);
   };
+
+  // Detecta retorno de Mercado Pago tras pagar suscripción
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    if (!payment) return;
+
+    if (payment === 'success') {
+      toast.success('¡Pago recibido! Tu plan se está actualizando…', { duration: 6000 });
+      if (refreshStore) refreshStore();
+    } else if (payment === 'pending') {
+      toast.info('Pago en proceso. Te avisamos cuando se confirme.', { duration: 6000 });
+    } else if (payment === 'failure') {
+      toast.error('El pago no se completó. Probá de nuevo cuando puedas.');
+    }
+
+    // Limpia la URL para que no vuelva a dispararse al refrescar
+    const url = new URL(window.location.href);
+    url.searchParams.delete('payment');
+    window.history.replaceState({}, document.title, url.toString());
+  }, [toast, refreshStore]);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -826,29 +848,33 @@ export default function AdminGastronomy() {
     fetchMenu();
   };
   const handleSubscribe = async (planId = PLAN_IDS.PROFESIONAL) => {
-    if (!config?.id) return toast.error('No se identificó la tienda');
+    if (!config?.id || !config?.slug) return toast.error('No se identificó la tienda');
     const plan = PLANS[planId];
     if (!plan) return toast.error('Plan no reconocido');
-    const btn = document.activeElement;
-    if (btn) btn.innerText = 'Procesando...';
+    setIsSubscribing(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: JSON.stringify({
+        body: {
           store_id: config.id,
+          slug: config.slug,
           plan_id: plan.id,
           price: plan.price,
           title: `Suscripción Plan ${plan.label}`,
           domain_url: window.location.origin,
-        }),
-        headers: { 'Content-Type': 'application/json' },
+        },
       });
       if (error) throw new Error(error.message || 'Falló la función');
-      if (data?.init_point) window.open(data.init_point, '_blank');
-      else toast.error('Mercado Pago no devolvió el link');
-    } catch {
-      toast.error('Error de conexión');
+      if (data?.error) throw new Error(data.error);
+      if (data?.init_point) {
+        window.location.href = data.init_point;
+        return;
+      }
+      toast.error('Mercado Pago no devolvió el link');
+    } catch (err) {
+      logger.error('Error en handleSubscribe', err);
+      toast.error('Error al iniciar el pago: ' + (err.message || 'desconocido'));
     } finally {
-      if (btn) btn.innerText = 'Pasarme a PRO';
+      setIsSubscribing(false);
     }
   };
   const exportCustomers = () => {
@@ -1346,7 +1372,14 @@ export default function AdminGastronomy() {
             onDeleteAllHistory={handleDeleteAllHistory}
           />
         )}
-        {activeTab === 'billing' && <BillingTab config={config} accentColor={accentColor} onSubscribe={handleSubscribe} />}
+        {activeTab === 'billing' && (
+          <BillingTab
+            config={config}
+            accentColor={accentColor}
+            onSubscribe={handleSubscribe}
+            isSubscribing={isSubscribing}
+          />
+        )}
         {activeTab === 'config' && (
           <ConfigTab
             viewBranchId={viewBranchId}
