@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   X, MapPin, Mail, Bike, Layers, Plus, Zap, TrendingUp, CloudUpload, Loader2,
   Crown, Store, User,
@@ -8,27 +8,37 @@ import Eyebrow from '../../components/shared/ui/Eyebrow';
 import Rule from '../../components/shared/ui/Rule';
 
 function ModalShell({ title, subtitle, eyebrow, onClose, maxWidth = 'max-w-md', children }) {
+  // Lock body scroll mientras el modal está abierto.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-ink/90 p-4 backdrop-blur-sm anim-fade">
+    <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-ink/90 backdrop-blur-sm anim-fade md:items-center md:overflow-y-auto md:p-4">
       <div
-        className={`relative my-8 w-full overflow-hidden rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] ${maxWidth}`}
+        className={`relative flex w-full flex-col overflow-hidden border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] md:my-8 md:rounded-[var(--radius-xl)] ${maxWidth}`}
       >
-        <div className="flex items-start justify-between border-b border-rule p-6">
-          <div>
+        <div className="flex items-start justify-between border-b border-rule p-5 md:p-6">
+          <div className="min-w-0 pr-3">
             {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-            <h2 className="display mt-2 text-2xl text-text">{title}</h2>
+            <h2 className="display mt-2 text-xl text-text md:text-2xl">{title}</h2>
             {subtitle && (
               <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">{subtitle}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+            className="shrink-0 rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+            aria-label="Cerrar"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5 md:p-6">{children}</div>
       </div>
     </div>
   );

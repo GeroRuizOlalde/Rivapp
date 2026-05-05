@@ -75,7 +75,15 @@ export default function NotificationPanel({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-[100] mt-2 flex max-h-[70vh] w-[380px] flex-col overflow-hidden rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] anim-rise">
+        <>
+          {/* Backdrop solo en mobile, captura clicks fuera */}
+          <div
+            className="fixed inset-0 z-[99] bg-ink/70 backdrop-blur-sm md:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+        <div
+          className="fixed inset-x-3 top-3 z-[100] flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] anim-rise md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:max-h-[70vh] md:w-[380px]"
+        >
           <div className="flex items-center justify-between border-b border-rule bg-ink-3 px-4 py-3">
             <div>
               <p className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">Inbox</p>
@@ -194,6 +202,7 @@ export default function NotificationPanel({
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );

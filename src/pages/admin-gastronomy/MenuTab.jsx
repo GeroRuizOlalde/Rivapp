@@ -27,11 +27,11 @@ export default function MenuTab({
             Tu <em className="display-italic text-acid">menú</em>
           </h1>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={onOpenPriceModal} variant="outline" size="md">
-            <TrendingUp className="h-4 w-4" /> Precios masivos
+        <div className="flex w-full flex-wrap gap-2 md:w-auto">
+          <Button onClick={onOpenPriceModal} variant="outline" size="md" className="flex-1 md:flex-none">
+            <TrendingUp className="h-4 w-4" /> Precios
           </Button>
-          <Button onClick={onOpenCreateProductModal} variant="acid" size="md">
+          <Button onClick={onOpenCreateProductModal} variant="acid" size="md" className="flex-1 md:flex-none">
             <Plus className="h-4 w-4" /> Nuevo
           </Button>
         </div>
@@ -68,31 +68,35 @@ export default function MenuTab({
         {visibleItems.map((item) => (
           <div
             key={item.id}
-            className="group flex items-center justify-between gap-4 rounded-[var(--radius-md)] border border-rule-strong bg-ink-2 p-3 transition-colors hover:border-text-muted"
+            className="group flex flex-col gap-3 rounded-[var(--radius-md)] border border-rule-strong bg-ink-2 p-3 transition-colors hover:border-text-muted md:flex-row md:items-center md:justify-between md:gap-4"
           >
-            <div className="flex min-w-0 items-center gap-4">
+            <div className="flex min-w-0 items-center gap-3 md:gap-4">
               <img
                 src={item.image || 'https://placehold.co/100'}
                 alt={item.name}
                 className="h-14 w-14 shrink-0 rounded-[var(--radius-sm)] object-cover"
               />
-              <div className="min-w-0">
-                <h3 className="display truncate text-lg text-text">{item.name}</h3>
-                <p className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+              <div className="min-w-0 flex-1">
+                <h3 className="display truncate text-base text-text md:text-lg">{item.name}</h3>
+                <p className="mono truncate text-[10px] uppercase tracking-[0.22em] text-text-subtle">
                   {item.category}
+                </p>
+                <p className="num mt-1 text-sm font-semibold text-text md:hidden">
+                  ${item.price}
                 </p>
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center justify-end gap-2">
               <button
                 onClick={() => onOpenPromoModal(item)}
                 className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-acid/20 bg-acid/10 text-acid transition-all hover:bg-acid hover:text-ink"
                 title="Crear promoción"
+                aria-label="Promoción"
               >
                 <Zap className="h-4 w-4" />
               </button>
-              <div className="num w-20 rounded-[var(--radius-sm)] border border-rule bg-ink-3 px-3 py-1.5 text-center text-sm font-semibold text-text">
+              <div className="num hidden w-20 rounded-[var(--radius-sm)] border border-rule bg-ink-3 px-3 py-1.5 text-center text-sm font-semibold text-text md:block">
                 ${item.price}
               </div>
               <button
@@ -102,18 +106,21 @@ export default function MenuTab({
                     ? 'border-acid/30 bg-acid/10 text-acid hover:bg-acid hover:text-ink'
                     : 'border-signal/30 bg-signal/10 text-signal hover:bg-signal hover:text-white'
                 }`}
+                aria-label={item.available ? 'Marcar agotado' : 'Marcar disponible'}
               >
                 {item.available ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               </button>
               <button
                 onClick={() => onOpenEditProductModal(item)}
                 className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-rule bg-white/5 text-ml-soft transition-all hover:border-ml hover:bg-ml hover:text-white"
+                aria-label="Editar"
               >
                 <Edit className="h-4 w-4" />
               </button>
               <button
                 onClick={() => onDeleteProduct(item.id)}
                 className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 text-signal transition-all hover:bg-signal hover:text-white"
+                aria-label="Borrar"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

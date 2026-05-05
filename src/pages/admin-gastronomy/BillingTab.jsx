@@ -20,10 +20,10 @@ export default function BillingTab({ config, accentColor, onSubscribe, isSubscri
 
       {onProTier ? (
         <div
-          className="relative overflow-hidden rounded-[var(--radius-2xl)] border p-10"
+          className="relative overflow-hidden rounded-[var(--radius-2xl)] border p-6 md:p-10"
           style={{ borderColor: `${accentColor}40`, backgroundColor: `${accentColor}08` }}
         >
-          <div className="flex flex-col items-end justify-between gap-6 md:flex-row">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6">
             <div>
               <div className="flex items-center gap-3">
                 <Eyebrow style={{ color: accentColor }}>Tu plan actual</Eyebrow>
@@ -34,10 +34,12 @@ export default function BillingTab({ config, accentColor, onSubscribe, isSubscri
                   <Crown className="h-3 w-3" /> Pro
                 </span>
               </div>
-              <h2 className="display mt-4 text-6xl text-text">{currentPlan?.label || 'Profesional'}</h2>
+              <h2 className="display mt-3 text-3xl text-text md:mt-4 md:text-6xl">
+                {currentPlan?.label || 'Profesional'}
+              </h2>
             </div>
-            <div className="text-right">
-              <p className="display num text-5xl text-text">
+            <div className="md:text-right">
+              <p className="display num text-3xl text-text md:text-5xl">
                 {formatPrice(currentPlan?.price ?? PLANS[PLAN_IDS.PROFESIONAL].price)}
               </p>
               <p className="mono mt-1 text-[11px] uppercase tracking-[0.22em] text-text-subtle">/ mes</p>
@@ -76,7 +78,7 @@ export default function BillingTab({ config, accentColor, onSubscribe, isSubscri
                   }
                 >
                   <div
-                    className={`flex flex-1 flex-col rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-8 ${
+                    className={`flex flex-1 flex-col rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-6 md:p-8 ${
                       isRecommended ? '' : 'border border-rule-strong'
                     }`}
                   >
@@ -94,7 +96,7 @@ export default function BillingTab({ config, accentColor, onSubscribe, isSubscri
                     </Eyebrow>
 
                     <div className="mt-4 flex items-baseline gap-2">
-                      <p className="display num text-5xl text-text">{formatPrice(plan.price)}</p>
+                      <p className="display num text-4xl text-text md:text-5xl">{formatPrice(plan.price)}</p>
                       <span className="mono text-xs text-text-subtle">/ mes</span>
                     </div>
 

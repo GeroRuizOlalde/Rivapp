@@ -15,7 +15,7 @@ export default function HistoryTab({
 }) {
   return (
     <div className="anim-rise">
-      <header className="mb-8 flex items-end justify-between">
+      <header className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
         <div>
           <Eyebrow>Archivo</Eyebrow>
           <h1 className="display mt-3 text-4xl md:text-5xl">
@@ -30,7 +30,60 @@ export default function HistoryTab({
         </button>
       </header>
 
-      <div className="overflow-hidden rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2">
+      {/* Mobile: cards */}
+      <div className="space-y-3 md:hidden">
+        {filteredHistory.map((o) => (
+          <div
+            key={o.id}
+            className="rounded-[var(--radius-md)] border border-rule-strong bg-ink-2 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="display text-base text-text">{o.customer_name || 'Sin nombre'}</p>
+                <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                  {new Date(o.created_at).toLocaleString('es-AR')}
+                </p>
+                {getBranchName(o.branch_id) && (
+                  <p className="mono mt-1 text-[10px] uppercase tracking-[0.18em] text-text-muted">
+                    {getBranchName(o.branch_id)}
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="num text-base font-semibold text-acid">
+                  ${o.total?.toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end gap-2 border-t border-rule pt-3">
+              <button
+                onClick={() => onEditOrder(o)}
+                className="rounded-[var(--radius-sm)] border border-rule bg-white/5 p-2 text-ml-soft hover:border-ml hover:bg-ml/10"
+                aria-label="Editar"
+              >
+                <Edit className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => onDeleteOrder(o.id)}
+                className="rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 p-2 text-signal hover:bg-signal hover:text-white"
+                aria-label="Borrar"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+        {filteredHistory.length === 0 && (
+          <div className="rounded-[var(--radius-md)] border border-dashed border-rule-strong p-10 text-center">
+            <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-subtle">
+              Sin pedidos archivados
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: tabla */}
+      <div className="hidden overflow-hidden rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 md:block">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-rule bg-ink-3">

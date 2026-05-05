@@ -19,7 +19,55 @@ export default function CRMTab({ customers, onExportCustomers }) {
         </Button>
       </header>
 
-      <div className="overflow-hidden rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2">
+      {/* Mobile: cards */}
+      <div className="space-y-3 md:hidden">
+        {customers.map((c, i) => (
+          <div
+            key={i}
+            className="rounded-[var(--radius-md)] border border-rule-strong bg-ink-2 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="display truncate text-lg text-text">{c.customer_name}</p>
+                <p className="mono mt-0.5 truncate text-[10px] uppercase tracking-[0.2em] text-text-subtle">
+                  {c.customer_phone}
+                </p>
+              </div>
+              <a
+                href={`https://wa.me/${c.customer_phone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 rounded-[var(--radius-sm)] border border-rule bg-white/5 p-2 text-text-muted hover:border-acid hover:bg-acid/10 hover:text-acid"
+                aria-label="Enviar WhatsApp"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </a>
+            </div>
+            <div className="mt-3 flex items-center gap-4 border-t border-rule pt-3">
+              <div>
+                <p className="mono text-[9px] uppercase tracking-[0.22em] text-text-subtle">Pedidos</p>
+                <p className="num mt-0.5 text-sm font-semibold text-text">{c.total_orders}</p>
+              </div>
+              <div className="border-l border-rule pl-4">
+                <p className="mono text-[9px] uppercase tracking-[0.22em] text-text-subtle">Total</p>
+                <p className="num mt-0.5 text-sm font-semibold text-acid">
+                  ${c.total_spent?.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+        {customers.length === 0 && (
+          <div className="rounded-[var(--radius-md)] border border-dashed border-rule-strong p-10 text-center">
+            <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-subtle">
+              Sin clientes todavía
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: tabla */}
+      <div className="hidden overflow-hidden rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 md:block">
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-rule bg-ink-3">

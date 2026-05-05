@@ -146,7 +146,10 @@ export default function AdminGastronomy() {
   const audioRef = useRef(new Audio(BELL_SOUND));
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
   const soundEnabledRef = useRef(false);
-  const prevOrdersCount = useRef(0);
+  // Timestamp ms del pedido pendiente más nuevo ya "visto". Se usa para
+  // distinguir pedidos genuinamente nuevos vs cambios de scope (sucursal,
+  // refresh por config update, etc). null = primer fetch, no sonar.
+  const lastSeenPendingAt = useRef(null);
 
   const HISTORY_PAGE_SIZE = 50;
 
@@ -182,12 +185,29 @@ export default function AdminGastronomy() {
       .eq('store_id', config.id)
       .neq('status', 'archivado')
       .order('created_at', { ascending: false });
-    if (data) {
-      setOrders(data);
-      const visibleOrders = !viewBranchId ? data : data.filter((o) => o.branch_id === viewBranchId);
-      const currentPending = visibleOrders.filter((o) => o.status === 'pendiente').length;
-      if (currentPending > prevOrdersCount.current) playNotification();
-      prevOrdersCount.current = currentPending;
+    if (!data) return;
+
+    setOrders(data);
+
+    // Solo sonar si entra un pedido pendiente con created_at posterior al
+    // último ya visto. Así, cambiar sucursal o togglear local NO dispara
+    // sonido (los pedidos preexistentes ya tienen timestamps viejos).
+    const visibleOrders = !viewBranchId ? data : data.filter((o) => o.branch_id === viewBranchId);
+    const pendingTimestamps = visibleOrders
+      .filter((o) => o.status === 'pendiente' && o.created_at)
+      .map((o) => new Date(o.created_at).getTime());
+    const newestPendingAt = pendingTimestamps.length ? Math.max(...pendingTimestamps) : null;
+
+    if (newestPendingAt !== null) {
+      if (lastSeenPendingAt.current !== null && newestPendingAt > lastSeenPendingAt.current) {
+        playNotification();
+      }
+      // Avanza la marca aunque sea el primer fetch (evita sonar en boot).
+      lastSeenPendingAt.current = newestPendingAt;
+    } else if (lastSeenPendingAt.current === null) {
+      // Inicializar incluso sin pendientes para que el primer fetch real
+      // posterior compare contra "ahora", no contra null.
+      lastSeenPendingAt.current = Date.now();
     }
   }, [config, viewBranchId, playNotification]);
 
@@ -383,7 +403,6 @@ export default function AdminGastronomy() {
 
   useEffect(() => {
     if (!config?.id) return;
-    prevOrdersCount.current = 0;
     fetchOrders();
     const interval = setInterval(fetchOrders, 5000);
     const channel = supabase
