@@ -6,7 +6,6 @@ import { logger } from '../utils/logger';
 
 import { useCartStore } from '../store/useCartStore';
 import { useMenuData } from '../hooks/useMenuData';
-import { useStoreStatus } from '../hooks/useStoreStatus';
 import {
   Search, Loader2, Lock, X, Banknote, CreditCard, MapPin, Copy, Check, Navigation,
   Ruler, Clock, AlertTriangle, ShoppingBag, Plus, Minus, ChevronRight, Phone, User,
@@ -983,7 +982,7 @@ export default function GastronomyHome() {
   const safeConfig = config || { store_name: 'Cargando…', color_accent: '#D0FF00', logo_url: '', banner_url: '' };
 
   const { menuItems, categories, loading } = useMenuData(config?.id, selectedBranch?.id);
-  const { isOpen, loading: statusLoading } = useStoreStatus();
+  const isActive = config?.is_active ?? true;
   const { clearCart } = useCartStore();
   const toast = useToast();
 
@@ -1005,7 +1004,7 @@ export default function GastronomyHome() {
   }, [clearCart, toast]);
 
   const isStoreOpen = useMemo(() => {
-    if (!isOpen) return false;
+    if (!isActive) return false;
     if (config?.auto_schedule && config.schedule_start && config.schedule_end) {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -1018,7 +1017,7 @@ export default function GastronomyHome() {
       return currentMinutes >= startMinutes || currentMinutes < endMinutes;
     }
     return true;
-  }, [isOpen, config]);
+  }, [isActive, config]);
 
   const [activeCategory, setActiveCategory] = useState('Todos');
   const orderType = 'delivery';
@@ -1149,7 +1148,7 @@ export default function GastronomyHome() {
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartTotal = cart.reduce((acc, item) => acc + parseFloat(item.finalPrice) * item.quantity, 0);
 
-  if (loading || statusLoading || loadingConfig)
+  if (loading || loadingConfig)
     return (
       <div className="flex min-h-screen items-center justify-center bg-ink">
         <Loader2 className="h-10 w-10 animate-spin text-acid" />

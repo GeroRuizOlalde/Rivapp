@@ -18,7 +18,7 @@ import NotificationToast from '../components/admin/NotificationToast';
 import { useNotifications, NOTIFICATION_TAB_MAP } from '../hooks/useNotifications';
 import { useToast } from '../components/shared/toastContext';
 import { useConfirm } from '../components/shared/confirmContext';
-import { getPlan, isProTier, PLANS, PLAN_IDS } from '../config/plans';
+import { getPlan, isProTier, PLANS, PLAN_IDS, PURCHASABLE_PLANS } from '../config/plans';
 
 const formatPrice = (n) => `$${n.toLocaleString('es-AR')}`;
 import Button from '../components/shared/ui/Button';
@@ -1403,44 +1403,91 @@ export default function AdminServices() {
                 );
               }
               return (
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="rounded-[var(--radius-2xl)] border border-rule-strong bg-ink-2 p-8">
-                    <Eyebrow>Tu plan actual</Eyebrow>
-                    <h2 className="display mt-4 text-4xl text-text">{currentPlan?.label || 'Sin plan'}</h2>
-                    <ul className="mt-6 space-y-3 text-sm text-text-muted">
-                      {(currentPlan?.features || []).slice(0, 3).map((f) => (
-                        <li key={f} className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-text-subtle" /> {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div
-                    className="rounded-[var(--radius-2xl)] p-px"
-                    style={{ background: `linear-gradient(to bottom right, ${accentColor}, var(--color-ink))` }}
-                  >
-                    <div className="rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-8">
-                      <Eyebrow tone="acid">{PLANS[PLAN_IDS.PROFESIONAL].label}</Eyebrow>
-                      <p className="display num mt-4 text-5xl text-text">
-                        {formatPrice(PLANS[PLAN_IDS.PROFESIONAL].price)}
-                      </p>
-                      <button
-                        onClick={() => handleSubscribe(PLAN_IDS.PROFESIONAL)}
-                        disabled={isSubscribing}
-                        className="mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold text-ink disabled:opacity-60"
-                        style={{ backgroundColor: accentColor }}
-                      >
-                        {isSubscribing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            Pasarme a Profesional <ChevronRight className="h-4 w-4" />
-                          </>
-                        )}
-                      </button>
+                <>
+                  {currentPlan && (
+                    <div className="mb-8 rounded-[var(--radius-2xl)] border border-rule-strong bg-ink-2 p-6">
+                      <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                        <div>
+                          <Eyebrow>Tu plan actual</Eyebrow>
+                          <h2 className="display mt-2 text-3xl text-text">{currentPlan.label}</h2>
+                        </div>
+                        <p className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                          Elegí el plan que mejor te quede
+                        </p>
+                      </div>
                     </div>
+                  )}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {PURCHASABLE_PLANS.map((plan) => {
+                      const isRecommended = plan.id === PLAN_IDS.PROFESIONAL;
+                      return (
+                        <div
+                          key={plan.id}
+                          className={`relative flex flex-col rounded-[var(--radius-2xl)] ${
+                            isRecommended ? 'p-px' : ''
+                          }`}
+                          style={
+                            isRecommended
+                              ? { background: `linear-gradient(to bottom right, ${accentColor}, var(--color-ink))` }
+                              : undefined
+                          }
+                        >
+                          <div
+                            className={`flex flex-1 flex-col rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-8 ${
+                              isRecommended ? '' : 'border border-rule-strong'
+                            }`}
+                          >
+                            {isRecommended && (
+                              <span
+                                className="mono absolute -top-3 right-6 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-ink"
+                                style={{ backgroundColor: accentColor }}
+                              >
+                                Recomendado
+                              </span>
+                            )}
+                            <Eyebrow style={isRecommended ? { color: accentColor } : undefined}>
+                              {plan.label}
+                            </Eyebrow>
+                            <div className="mt-4 flex items-baseline gap-2">
+                              <p className="display num text-5xl text-text">{formatPrice(plan.price)}</p>
+                              <span className="mono text-xs text-text-subtle">/ mes</span>
+                            </div>
+                            <Rule className="my-6" />
+                            <ul className="flex-1 space-y-3 text-sm text-text-muted">
+                              {plan.features.map((f) => (
+                                <li key={f} className="flex items-start gap-2">
+                                  <Check
+                                    className="mt-0.5 h-4 w-4 shrink-0"
+                                    style={{ color: isRecommended ? accentColor : 'var(--color-text-subtle)' }}
+                                  />
+                                  <span>{f}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <button
+                              onClick={() => handleSubscribe(plan.id)}
+                              disabled={isSubscribing}
+                              className={`mono mt-8 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 text-[11px] font-semibold uppercase tracking-[0.22em] disabled:opacity-60 ${
+                                isRecommended
+                                  ? 'text-ink shadow-[var(--shadow-lift)]'
+                                  : 'border border-rule-strong bg-white/5 text-text hover:bg-white/10'
+                              }`}
+                              style={isRecommended ? { backgroundColor: accentColor } : undefined}
+                            >
+                              {isSubscribing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  Elegir {plan.label} <ChevronRight className="h-3.5 w-3.5" />
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                </>
               );
             })()}
           </div>
