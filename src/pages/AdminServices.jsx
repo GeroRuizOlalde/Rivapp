@@ -106,7 +106,7 @@ function AdminInput({ label, ...props }) {
 }
 
 export default function AdminServices() {
-  const { store } = useStore();
+  const { store, refreshStore } = useStore();
   const { features, canAccessAdmin } = useEntitlements(store);
   const navigate = useNavigate();
   const toast = useToast();
@@ -429,7 +429,7 @@ export default function AdminServices() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    await supabase
+    const { error } = await supabase
       .from('stores')
       .update({
         name: profileForm.name,
@@ -442,6 +442,11 @@ export default function AdminServices() {
         enable_payments: profileForm.enable_payments,
       })
       .eq('id', store.id);
+    if (error) {
+      toast.error('Error al guardar: ' + error.message);
+      return;
+    }
+    if (refreshStore) await refreshStore();
     toast.success('Perfil guardado');
   };
 
@@ -461,6 +466,7 @@ export default function AdminServices() {
         max_concurrent_slots: slotsConfig.max_concurrent_slots,
       })
       .eq('id', store.id);
+    if (refreshStore) await refreshStore();
     toast.success('Configuración guardada');
   };
 

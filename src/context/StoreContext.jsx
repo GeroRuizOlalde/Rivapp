@@ -93,6 +93,34 @@ export const StoreProvider = ({ children }) => {
     fetchStoreData();
   }, [location.pathname]);
 
+  // Realtime: reaccionar a cambios en la tienda (color, logo, horarios, is_active, etc.)
+  // sin requerir F5. Cualquier cliente del context — admin u otras pestañas, storefront
+  // público — se entera al instante.
+  useEffect(() => {
+    if (!store?.id) return undefined;
+
+    const channel = supabase
+      .channel(`store_live_${store.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'stores', filter: `id=eq.${store.id}` },
+        async () => {
+          // Refetch desde stores_public para respetar shape y RLS.
+          const { data } = await supabase
+            .from('stores_public')
+            .select('*')
+            .eq('id', store.id)
+            .single();
+          if (data) setStore(data);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [store?.id]);
+
   const determineUserRole = async (userId, storeId, branchId) => {
     const { data: ownerMembership } = await supabase
       .from('stores')
