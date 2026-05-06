@@ -54,6 +54,12 @@ entrypoint = "./functions/save-mp-settings/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/save-mp-settings/*.html" ]
 
+[functions.get-mp-settings-status]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-mp-settings-status/deno.json"
+entrypoint = "./functions/get-mp-settings-status/index.ts"
+
 [functions.create-store-owner]
 enabled = true
 verify_jwt = true

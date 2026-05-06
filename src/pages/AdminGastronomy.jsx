@@ -123,6 +123,14 @@ export default function AdminGastronomy() {
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  // Flags de qué credenciales MP están cargadas en store_secrets (no exponemos
+  // los valores reales — solo si están o no, para mostrar bullets en la UI).
+  const [mpStatus, setMpStatus] = useState({
+    mp_access_token: false,
+    mp_public_key: false,
+    mp_client_id: false,
+    mp_client_secret: false,
+  });
 
   const [selectedOrderForRider, setSelectedOrderForRider] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
@@ -387,6 +395,16 @@ export default function AdminGastronomy() {
       charge_delivery_in_mp: config.charge_delivery_in_mp ?? true,
     });
     setIsOpen(config.is_active);
+
+    // Chequear qué credenciales MP están ya cargadas (sin exponer valores).
+    supabase.functions
+      .invoke('get-mp-settings-status', { body: { store_id: config.id } })
+      .then(({ data }) => {
+        if (data?.has) setMpStatus(data.has);
+      })
+      .catch(() => {
+        /* sin status, seguimos como antes */
+      });
   }, [
     config,
     fetchBranches,
@@ -740,10 +758,31 @@ export default function AdminGastronomy() {
     try {
       const { mp_access_token, mp_public_key, mp_client_id, mp_client_secret, store_name, ...restSettings } = settingsForm;
       if (mp_access_token || mp_public_key || mp_client_id || mp_client_secret) {
-        const { error: fnError } = await supabase.functions.invoke('save-mp-settings', {
+        const invokeRes = await supabase.functions.invoke('save-mp-settings', {
           body: { store_id: config.id, mp_access_token, mp_public_key, mp_client_id, mp_client_secret },
         });
-        if (fnError) throw new Error('Error guardando credenciales MP: ' + fnError.message);
+        let fnErrMsg = null;
+        if (invokeRes.error) {
+          try {
+            const ctx = await invokeRes.error.context?.json?.();
+            fnErrMsg = ctx?.error || invokeRes.error.message;
+          } catch {
+            fnErrMsg = invokeRes.error.message;
+          }
+        } else if (invokeRes.data?.error) {
+          fnErrMsg = invokeRes.data.error;
+        }
+        if (fnErrMsg) throw new Error('Error guardando credenciales MP: ' + fnErrMsg);
+        if (invokeRes.data?.has) setMpStatus(invokeRes.data.has);
+        // Vaciamos los campos del form para que el render muestre bullets
+        // (los valores ya están en store_secrets, no necesitamos retenerlos).
+        setSettingsForm((prev) => ({
+          ...prev,
+          mp_access_token: '',
+          mp_public_key: '',
+          mp_client_id: '',
+          mp_client_secret: '',
+        }));
       }
       const updates = {
         ...restSettings,
@@ -1407,6 +1446,7 @@ export default function AdminGastronomy() {
             setBranchForm={setBranchForm}
             settingsForm={settingsForm}
             setSettingsForm={setSettingsForm}
+            mpStatus={mpStatus}
             accentColor={accentColor}
             contrastTextColor={contrastTextColor}
             getBranchName={getBranchName}

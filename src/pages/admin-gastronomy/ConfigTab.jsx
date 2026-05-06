@@ -1,4 +1,4 @@
-import { Bike, Camera, CreditCard, Edit, Globe, MapPin, Plus, Save, Star, Trash2 } from 'lucide-react';
+import { Bike, Camera, Check, CreditCard, Edit, Globe, MapPin, Plus, Save, Star, Trash2 } from 'lucide-react';
 import Button from '../../components/shared/ui/Button';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
 import Rule from '../../components/shared/ui/Rule';
@@ -10,6 +10,7 @@ export default function ConfigTab({
   setBranchForm,
   settingsForm,
   setSettingsForm,
+  mpStatus = { mp_access_token: false, mp_public_key: false },
   accentColor,
   contrastTextColor,
   getBranchName,
@@ -205,30 +206,49 @@ export default function ConfigTab({
 
           {/* Mercado Pago */}
           <section className="rounded-[var(--radius-xl)] border border-ml/30 bg-ml/[0.05] p-6">
-            <Eyebrow tone="ml">
-              <CreditCard className="h-3 w-3" /> Integración Mercado Pago
-            </Eyebrow>
-            <p className="mt-3 text-sm text-text-muted">
-              Pegá tus credenciales de producción. Los datos se guardan encriptados.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Eyebrow tone="ml">
+                  <CreditCard className="h-3 w-3" /> Integración Mercado Pago
+                </Eyebrow>
+                <p className="mt-3 text-sm text-text-muted">
+                  Pegá tus credenciales de producción. Los datos se guardan encriptados; ya no se vuelven a mostrar.
+                </p>
+              </div>
+              {(mpStatus.mp_access_token || mpStatus.mp_public_key) && (
+                <span className="mono inline-flex shrink-0 items-center gap-1 rounded-full border border-acid/40 bg-acid/10 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-acid">
+                  <Check className="h-3 w-3" /> Configurado
+                </span>
+              )}
+            </div>
             <Rule className="mt-4" />
 
             <div className="mt-5 space-y-4">
               <div>
-                <label className="eyebrow mb-2 block">Access token (production)</label>
+                <label className="eyebrow mb-2 flex items-center justify-between">
+                  <span>Access token (production)</span>
+                  {mpStatus.mp_access_token && (
+                    <span className="mono text-[9px] uppercase tracking-[0.22em] text-acid">Cargado</span>
+                  )}
+                </label>
                 <input
                   className="mono w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text focus:border-ml focus:outline-none"
                   type="password"
-                  placeholder="APP_USR-…"
+                  placeholder={mpStatus.mp_access_token ? '••••••••••••• (escribí para reemplazar)' : 'APP_USR-…'}
                   value={settingsForm.mp_access_token}
                   onChange={(event) => setSettingsForm({ ...settingsForm, mp_access_token: event.target.value })}
                 />
               </div>
               <div>
-                <label className="eyebrow mb-2 block">Public key (production)</label>
+                <label className="eyebrow mb-2 flex items-center justify-between">
+                  <span>Public key (production)</span>
+                  {mpStatus.mp_public_key && (
+                    <span className="mono text-[9px] uppercase tracking-[0.22em] text-acid">Cargada</span>
+                  )}
+                </label>
                 <input
                   className="mono w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text focus:border-ml focus:outline-none"
-                  placeholder="APP_USR-…"
+                  placeholder={mpStatus.mp_public_key ? '••••••••••••• (escribí para reemplazar)' : 'APP_USR-…'}
                   value={settingsForm.mp_public_key}
                   onChange={(event) => setSettingsForm({ ...settingsForm, mp_public_key: event.target.value })}
                 />
