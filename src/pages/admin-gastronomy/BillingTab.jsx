@@ -10,7 +10,7 @@ export default function BillingTab({ config, accentColor, onSubscribe, isSubscri
   const onProTier = isProTier(config.plan_type) || config.is_demo;
 
   return (
-    <div className="max-w-4xl anim-rise">
+    <div className="mx-auto max-w-5xl pb-20 anim-rise">
       <header className="mb-8">
         <Eyebrow>Plan</Eyebrow>
         <h1 className="display mt-3 text-4xl md:text-5xl">

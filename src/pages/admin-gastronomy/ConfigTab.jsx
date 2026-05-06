@@ -26,7 +26,7 @@ export default function ConfigTab({
   const isGlobalConfig = !viewBranchId;
 
   return (
-    <div className="max-w-3xl space-y-8 anim-rise">
+    <div className="mx-auto max-w-5xl space-y-8 pb-20 anim-rise">
       {isGlobalConfig ? (
         <>
           <header>
@@ -256,13 +256,15 @@ export default function ConfigTab({
             </div>
           </section>
 
-          <button
-            onClick={onSaveSettings}
-            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold shadow-[var(--shadow-lift)] transition-transform hover:scale-[1.01]"
-            style={{ backgroundColor: accentColor, color: contrastTextColor }}
-          >
-            <Save className="h-4 w-4" /> Guardar cambios globales
-          </button>
+          <div className="flex justify-end">
+            <button
+              onClick={onSaveSettings}
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] px-8 py-4 font-semibold shadow-[var(--shadow-lift)] transition-transform hover:scale-[1.01] active:scale-100 md:w-auto"
+              style={{ backgroundColor: accentColor, color: contrastTextColor }}
+            >
+              <Save className="h-4 w-4" /> Guardar cambios globales
+            </button>
+          </div>
         </>
       ) : (
         <>
@@ -324,12 +326,14 @@ export default function ConfigTab({
             </button>
           </section>
 
-          <button
-            onClick={onUpdateBranchDetails}
-            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-acid py-4 font-semibold text-ink shadow-[var(--shadow-lift)] hover:brightness-110"
-          >
-            <Save className="h-4 w-4" /> Actualizar sucursal
-          </button>
+          <div className="flex justify-end">
+            <button
+              onClick={onUpdateBranchDetails}
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-acid px-8 py-4 font-semibold text-ink shadow-[var(--shadow-lift)] transition-transform hover:scale-[1.01] active:scale-100 md:w-auto"
+            >
+              <Save className="h-4 w-4" /> Actualizar sucursal
+            </button>
+          </div>
         </>
       )}
     </div>

@@ -1657,7 +1657,7 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'billing' && (
-          <div className="max-w-4xl anim-rise">
+          <div className="mx-auto max-w-5xl pb-20 anim-rise">
             <header className="mb-8">
               <Eyebrow>Plan</Eyebrow>
               <h1 className="display mt-3 text-4xl md:text-5xl">
@@ -1985,20 +1985,15 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'config' && (
-          <div className="max-w-3xl anim-rise">
-            <header className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-              <div>
-                <Eyebrow>Configuración</Eyebrow>
-                <h1 className="display mt-3 text-4xl md:text-5xl">
-                  <em className="display-italic" style={{ color: accentColor }}>Horarios</em>
-                </h1>
-              </div>
-              <button
-                onClick={handleSaveSchedule}
-                className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-acid px-6 py-3 text-sm font-semibold text-ink md:w-auto"
-              >
-                <Save className="h-4 w-4" /> Guardar
-              </button>
+          <div className="mx-auto max-w-5xl pb-20 anim-rise">
+            <header className="mb-8">
+              <Eyebrow>Configuración</Eyebrow>
+              <h1 className="display mt-3 text-4xl md:text-5xl">
+                <em className="display-italic" style={{ color: accentColor }}>Horarios</em>
+              </h1>
+              <p className="mt-2 text-sm text-text-muted">
+                Definí cupos simultáneos y horario semanal de atención.
+              </p>
             </header>
 
             <div className="mb-6 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-5 md:p-6">
@@ -2115,6 +2110,16 @@ export default function AdminServices() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={handleSaveSchedule}
+                className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] px-8 py-4 font-semibold text-ink shadow-[var(--shadow-lift)] transition-transform hover:scale-[1.01] active:scale-100 md:w-auto"
+                style={{ backgroundColor: accentColor }}
+              >
+                <Save className="h-4 w-4" /> Guardar horarios
+              </button>
             </div>
           </div>
         )}
