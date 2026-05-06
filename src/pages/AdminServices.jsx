@@ -135,6 +135,8 @@ export default function AdminServices() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  // Flags de qué credenciales MP están cargadas (sin exponer valores).
+  const [mpStatus, setMpStatus] = useState({ mp_access_token: false, mp_public_key: false });
   const [services, setServices] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -356,14 +358,24 @@ export default function AdminServices() {
         color_accent: store.color_accent || '#2563eb',
         enable_staff_selection: store.enable_staff_selection ?? true,
         enable_payments: store.enable_payments ?? false,
-        mp_public_key: store.mp_public_key || '',
-        mp_access_token: store.mp_access_token || '',
+        // Empezamos vacíos — los valores reales viven en store_secrets y se
+        // muestran como bullets en placeholder cuando mpStatus dice "cargado".
+        mp_public_key: '',
+        mp_access_token: '',
       });
       setSlotsConfig({
         enable_multislots: store.enable_multislots || false,
         max_concurrent_slots: store.max_concurrent_slots || 1,
       });
     }, 0);
+
+    // Chequear qué credenciales MP están ya cargadas.
+    supabase.functions
+      .invoke('get-mp-settings-status', { body: { store_id: store.id } })
+      .then(({ data }) => {
+        if (data?.has) setMpStatus(data.has);
+      })
+      .catch(() => {});
 
     const initialLoadTimeout = window.setTimeout(() => {
       refreshAllData();
@@ -509,6 +521,38 @@ export default function AdminServices() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+
+    // 1) Si el usuario escribió credenciales MP, las guardamos primero en
+    //    store_secrets (vía edge function con service role).
+    if (profileForm.mp_access_token || profileForm.mp_public_key) {
+      const invokeRes = await supabase.functions.invoke('save-mp-settings', {
+        body: {
+          store_id: store.id,
+          mp_access_token: profileForm.mp_access_token,
+          mp_public_key: profileForm.mp_public_key,
+        },
+      });
+      let fnErrMsg = null;
+      if (invokeRes.error) {
+        try {
+          const ctx = await invokeRes.error.context?.json?.();
+          fnErrMsg = ctx?.error || invokeRes.error.message;
+        } catch {
+          fnErrMsg = invokeRes.error.message;
+        }
+      } else if (invokeRes.data?.error) {
+        fnErrMsg = invokeRes.data.error;
+      }
+      if (fnErrMsg) {
+        toast.error('Error guardando credenciales MP: ' + fnErrMsg);
+        return;
+      }
+      if (invokeRes.data?.has) setMpStatus(invokeRes.data.has);
+      // Vaciamos los campos del form (las credenciales ya están en store_secrets).
+      setProfileForm((prev) => ({ ...prev, mp_access_token: '', mp_public_key: '' }));
+    }
+
+    // 2) Resto del perfil en stores.
     const { error } = await supabase
       .from('stores')
       .update({
@@ -1741,7 +1785,7 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'profile' && (
-          <div className="max-w-3xl pb-20 anim-rise">
+          <div className="mx-auto max-w-5xl pb-20 anim-rise">
             <header className="mb-8">
               <Eyebrow>Perfil</Eyebrow>
               <h1 className="display mt-3 text-4xl md:text-5xl">
@@ -1891,19 +1935,34 @@ export default function AdminServices() {
                       animate={{ height: 'auto', opacity: 1 }}
                       className="space-y-3 rounded-[var(--radius-md)] border border-ml/30 bg-ml/10 p-4"
                     >
-                      <p className="mono text-[10px] uppercase tracking-[0.22em] text-ml-soft">
-                        Credenciales · Producción
-                      </p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="mono text-[10px] uppercase tracking-[0.22em] text-ml-soft">
+                          Credenciales · Producción
+                        </p>
+                        {(mpStatus.mp_access_token || mpStatus.mp_public_key) && (
+                          <span className="mono inline-flex items-center gap-1 rounded-full border border-acid/40 bg-acid/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-acid">
+                            <Check className="h-3 w-3" /> Configurado
+                          </span>
+                        )}
+                      </div>
                       <AdminInput
-                        label="Access Token"
+                        label={
+                          mpStatus.mp_access_token
+                            ? 'Access Token · cargado (escribí para reemplazar)'
+                            : 'Access Token'
+                        }
                         type="password"
-                        placeholder="APP_USR-…"
+                        placeholder={mpStatus.mp_access_token ? '•••••••••••••' : 'APP_USR-…'}
                         value={profileForm.mp_access_token}
                         onChange={(e) => setProfileForm({ ...profileForm, mp_access_token: e.target.value })}
                       />
                       <AdminInput
-                        label="Public Key"
-                        placeholder="APP_USR-…"
+                        label={
+                          mpStatus.mp_public_key
+                            ? 'Public Key · cargada (escribí para reemplazar)'
+                            : 'Public Key'
+                        }
+                        placeholder={mpStatus.mp_public_key ? '•••••••••••••' : 'APP_USR-…'}
                         value={profileForm.mp_public_key}
                         onChange={(e) => setProfileForm({ ...profileForm, mp_public_key: e.target.value })}
                       />
@@ -1915,7 +1974,7 @@ export default function AdminServices() {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 rounded-[var(--radius-md)] px-8 py-4 font-semibold text-ink shadow-[var(--shadow-lift)]"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[var(--radius-md)] px-8 py-4 font-semibold text-ink shadow-[var(--shadow-lift)] transition-transform hover:scale-[1.01] active:scale-100 md:w-auto"
                   style={{ backgroundColor: accentColor }}
                 >
                   <Save className="h-4 w-4" /> Guardar

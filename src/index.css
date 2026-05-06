@@ -60,6 +60,17 @@
     color: var(--color-ink);
   }
 
+  /* Tailwind v4 preflight setea cursor:default en botones; lo restauramos. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a[href] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   h1, h2, h3, h4 {
     font-feature-settings: "ss01", "ss02";
     letter-spacing: -0.02em;
