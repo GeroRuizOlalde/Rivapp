@@ -74,20 +74,30 @@ function StatCard({ label, value, hint, icon: Icon, accent = 'acid' }) {
 }
 
 function Modal({ children, onClose, title }) {
+  // Lock body scroll mientras el modal está abierto.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/90 p-4 backdrop-blur-sm anim-fade">
-      <div className="w-full max-w-md rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)]">
-        <div className="flex items-center justify-between border-b border-rule p-6">
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-ink/90 backdrop-blur-sm anim-fade md:items-center md:overflow-y-auto md:p-4">
+      <div className="flex w-full max-w-md flex-col overflow-hidden border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] md:my-8 md:rounded-[var(--radius-xl)]">
+        <div className="flex items-center justify-between border-b border-rule p-5 md:p-6">
           <Eyebrow>Formulario</Eyebrow>
           <button
             onClick={onClose}
             className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+            aria-label="Cerrar"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        {title && <h3 className="display px-6 pt-6 text-3xl text-text">{title}</h3>}
-        <div className="p-6">{children}</div>
+        {title && <h3 className="display px-5 pt-5 text-2xl text-text md:px-6 md:pt-6 md:text-3xl">{title}</h3>}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5 md:p-6">{children}</div>
       </div>
     </div>
   );
@@ -160,8 +170,10 @@ export default function AdminServices() {
     window.history.replaceState({}, document.title, url.toString());
   }, [toast, refreshStore]);
 
-  const isFirstLoad = useRef(true);
-  const prevAppointmentsCount = useRef(0);
+  // Timestamp ms del turno pendiente más nuevo ya "visto". Solo suena si
+  // aparece un turno con created_at posterior. Inmune a re-fetches por cambios
+  // de scope (color, is_active, etc).
+  const lastSeenPendingAt = useRef(null);
 
   const [profileForm, setProfileForm] = useState({
     name: '',
@@ -241,19 +253,23 @@ export default function AdminServices() {
       .eq('store_id', store.id)
       .order('start_time', { ascending: true });
 
-    if (data) {
-      setAppointments(data);
-      const currentCount = data.filter((a) => a.status === 'pendiente').length;
+    if (!data) return;
+    setAppointments(data);
 
-      if (isFirstLoad.current) {
-        isFirstLoad.current = false;
-        prevAppointmentsCount.current = currentCount;
-      } else if (currentCount > prevAppointmentsCount.current) {
+    const pendingTimestamps = data
+      .filter((a) => a.status === 'pendiente' && a.created_at)
+      .map((a) => new Date(a.created_at).getTime());
+    const newestPendingAt = pendingTimestamps.length ? Math.max(...pendingTimestamps) : null;
+
+    if (newestPendingAt !== null) {
+      if (lastSeenPendingAt.current !== null && newestPendingAt > lastSeenPendingAt.current) {
         playNotification();
       }
-      prevAppointmentsCount.current = currentCount;
+      lastSeenPendingAt.current = newestPendingAt;
+    } else if (lastSeenPendingAt.current === null) {
+      lastSeenPendingAt.current = Date.now();
     }
-  }, [playNotification, store]);
+  }, [playNotification, store?.id]);
 
   const fetchServices = useCallback(async () => {
     if (!store?.id) return;
@@ -359,9 +375,9 @@ export default function AdminServices() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments', filter: `store_id=eq.${store.id}` },
-        (payload) => {
+        () => {
+          // El fetch detecta y dispara el sonido si hay timestamps nuevos.
           void fetchAppointments();
-          if (payload.eventType === 'INSERT') playNotification();
         }
       )
       .subscribe();
@@ -371,7 +387,10 @@ export default function AdminServices() {
       window.clearTimeout(initialLoadTimeout);
       supabase.removeChannel(channel);
     };
-  }, [fetchAppointments, fetchGlobalNotifications, playNotification, refreshAllData, store]);
+    // Solo depende del id de la tienda, no del objeto completo. Cambios de
+    // color / is_active / etc no recrean el channel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id]);
 
   const pendingAppointments = useMemo(
     () => appointments.filter((a) => a.status === 'pendiente'),
@@ -1249,16 +1268,18 @@ export default function AdminServices() {
                   key={member.id}
                   className="group relative flex flex-col items-center gap-4 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6 text-center transition-colors hover:border-text-muted"
                 >
-                  <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="absolute right-3 top-3 flex gap-1 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                     <button
                       onClick={() => openStaffModal(member)}
                       className="rounded-[var(--radius-sm)] bg-white/5 p-1.5 text-text-muted hover:bg-white/10 hover:text-text"
+                      aria-label="Editar"
                     >
                       <Edit className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => deleteStaff(member.id)}
                       className="rounded-[var(--radius-sm)] bg-signal/10 p-1.5 text-signal hover:bg-signal hover:text-white"
+                      aria-label="Borrar"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -1301,11 +1322,19 @@ export default function AdminServices() {
                   key={s.id}
                   className="group relative rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6 transition-colors hover:border-text-muted"
                 >
-                  <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button onClick={() => openServiceModal(s)} className="text-text-muted hover:text-text">
+                  <div className="absolute right-4 top-4 flex gap-2 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                    <button
+                      onClick={() => openServiceModal(s)}
+                      className="rounded-[var(--radius-sm)] border border-rule bg-white/5 p-2 text-text-muted hover:border-text hover:text-text md:border-transparent md:bg-transparent md:p-0"
+                      aria-label="Editar"
+                    >
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button onClick={() => deleteService(s.id)} className="text-text-muted hover:text-signal">
+                    <button
+                      onClick={() => deleteService(s.id)}
+                      className="rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 p-2 text-signal hover:bg-signal hover:text-white md:border-transparent md:bg-transparent md:p-0 md:text-text-muted md:hover:bg-transparent md:hover:text-signal"
+                      aria-label="Borrar"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -1379,8 +1408,8 @@ export default function AdminServices() {
               const onProTier = isProTier(store.plan_type) || store.is_demo;
               if (onProTier) {
                 return (
-                  <div className="relative overflow-hidden rounded-[var(--radius-2xl)] border border-acid/40 bg-ink-2 p-10">
-                    <div className="flex items-end justify-between">
+                  <div className="relative overflow-hidden rounded-[var(--radius-2xl)] border border-acid/40 bg-ink-2 p-6 md:p-10">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6">
                       <div>
                         <div className="flex items-center gap-3">
                           <Eyebrow tone="acid">Tu plan actual</Eyebrow>
@@ -1388,12 +1417,12 @@ export default function AdminServices() {
                             <Crown className="h-3 w-3" /> Pro
                           </span>
                         </div>
-                        <h2 className="display mt-4 text-6xl text-text">
+                        <h2 className="display mt-3 text-3xl text-text md:mt-4 md:text-6xl">
                           {currentPlan?.label || 'Profesional'}
                         </h2>
                       </div>
-                      <div className="text-right">
-                        <p className="display num text-5xl text-text">
+                      <div className="md:text-right">
+                        <p className="display num text-3xl text-text md:text-5xl">
                           {formatPrice(currentPlan?.price ?? PLANS[PLAN_IDS.PROFESIONAL].price)}
                         </p>
                         <p className="mono mt-1 text-[11px] uppercase tracking-[0.22em] text-text-subtle">/ mes</p>
@@ -1433,7 +1462,7 @@ export default function AdminServices() {
                           }
                         >
                           <div
-                            className={`flex flex-1 flex-col rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-8 ${
+                            className={`flex flex-1 flex-col rounded-[calc(var(--radius-2xl)-1px)] bg-ink-2 p-6 md:p-8 ${
                               isRecommended ? '' : 'border border-rule-strong'
                             }`}
                           >
@@ -1449,7 +1478,7 @@ export default function AdminServices() {
                               {plan.label}
                             </Eyebrow>
                             <div className="mt-4 flex items-baseline gap-2">
-                              <p className="display num text-5xl text-text">{formatPrice(plan.price)}</p>
+                              <p className="display num text-4xl text-text md:text-5xl">{formatPrice(plan.price)}</p>
                               <span className="mono text-xs text-text-subtle">/ mes</span>
                             </div>
                             <Rule className="my-6" />
@@ -1680,7 +1709,7 @@ export default function AdminServices() {
 
         {activeTab === 'config' && (
           <div className="max-w-3xl anim-rise">
-            <header className="mb-8 flex items-end justify-between">
+            <header className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
               <div>
                 <Eyebrow>Configuración</Eyebrow>
                 <h1 className="display mt-3 text-4xl md:text-5xl">
@@ -1689,17 +1718,17 @@ export default function AdminServices() {
               </div>
               <button
                 onClick={handleSaveSchedule}
-                className="flex items-center gap-2 rounded-[var(--radius-md)] bg-acid px-6 py-3 text-sm font-semibold text-ink"
+                className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-acid px-6 py-3 text-sm font-semibold text-ink md:w-auto"
               >
                 <Save className="h-4 w-4" /> Guardar
               </button>
             </header>
 
-            <div className="mb-6 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="display inline-flex items-center gap-2 text-xl" style={{ color: accentColor }}>
-                    <Users className="h-4 w-4" /> Cupos simultáneos
+            <div className="mb-6 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-5 md:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="display inline-flex items-center gap-2 text-lg md:text-xl" style={{ color: accentColor }}>
+                    <Users className="h-4 w-4 shrink-0" /> Cupos simultáneos
                   </p>
                   <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
                     Varias personas en el mismo horario
@@ -1710,9 +1739,10 @@ export default function AdminServices() {
                   onClick={() =>
                     setSlotsConfig({ ...slotsConfig, enable_multislots: !slotsConfig.enable_multislots })
                   }
-                  className={`h-6 w-12 rounded-full p-1 transition-colors ${
+                  className={`h-6 w-12 shrink-0 rounded-full p-1 transition-colors ${
                     slotsConfig.enable_multislots ? 'bg-acid' : 'bg-rule-strong'
                   }`}
+                  aria-label="Activar cupos simultáneos"
                 >
                   <div
                     className={`h-4 w-4 rounded-full bg-white transition-transform ${
@@ -1753,9 +1783,9 @@ export default function AdminServices() {
               {schedules.map((day, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between border-b border-rule p-4 last:border-0 hover:bg-white/[0.02]"
+                  className="flex flex-col gap-3 border-b border-rule p-4 last:border-0 hover:bg-white/[0.02] md:flex-row md:items-center md:justify-between"
                 >
-                  <div className="flex w-40 items-center gap-4">
+                  <label className="flex cursor-pointer items-center gap-3 md:w-40">
                     <input
                       type="checkbox"
                       checked={!day.is_closed}
@@ -1765,18 +1795,24 @@ export default function AdminServices() {
                         setSchedules(n);
                       }}
                       style={{ accentColor }}
-                      className="h-4 w-4"
+                      className="h-4 w-4 shrink-0"
                     />
                     <span className={`display text-lg ${day.is_closed ? 'text-text-subtle' : 'text-text'}`}>
                       {DAYS[day.day_of_week]}
                     </span>
-                  </div>
-                  <div className={`flex items-center gap-3 ${day.is_closed ? 'opacity-30' : ''}`}>
-                    <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-rule bg-ink-3 px-3 py-1.5">
+                    {day.is_closed && (
+                      <span className="mono ml-auto rounded-sm bg-white/5 px-2 py-0.5 text-[9px] uppercase tracking-[0.22em] text-text-subtle md:hidden">
+                        Cerrado
+                      </span>
+                    )}
+                  </label>
+                  <div className={`grid grid-cols-2 gap-2 md:flex md:items-center md:gap-3 ${day.is_closed ? 'opacity-40' : ''}`}>
+                    <div className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-rule bg-ink-3 px-3 py-2 md:py-1.5">
                       <span className="mono text-[9px] uppercase tracking-[0.2em] text-text-subtle">Abre</span>
                       <input
                         type="time"
-                        className="mono bg-transparent text-sm text-text outline-none"
+                        disabled={day.is_closed}
+                        className="mono w-full bg-transparent text-right text-sm text-text outline-none md:w-auto"
                         value={day.open_time}
                         onChange={(e) => {
                           const n = [...schedules];
@@ -1785,11 +1821,12 @@ export default function AdminServices() {
                         }}
                       />
                     </div>
-                    <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-rule bg-ink-3 px-3 py-1.5">
+                    <div className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-rule bg-ink-3 px-3 py-2 md:py-1.5">
                       <span className="mono text-[9px] uppercase tracking-[0.2em] text-text-subtle">Cierra</span>
                       <input
                         type="time"
-                        className="mono bg-transparent text-sm text-text outline-none"
+                        disabled={day.is_closed}
+                        className="mono w-full bg-transparent text-right text-sm text-text outline-none md:w-auto"
                         value={day.close_time}
                         onChange={(e) => {
                           const n = [...schedules];

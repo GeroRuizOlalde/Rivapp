@@ -59,6 +59,17 @@ export default function SuperAdmin() {
     checkAdminAccess();
   }, [navigate]);
 
+  // Body lock cuando hay un modal abierto (evita que el fondo scrollee).
+  useEffect(() => {
+    const anyOpen = showCreateModal || showEditModal || showNotifyModal;
+    if (!anyOpen) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showCreateModal, showEditModal, showNotifyModal]);
+
   const fetchAllData = async () => {
     setLoading(true);
     const { data: storesData } = await supabase
@@ -462,20 +473,20 @@ export default function SuperAdmin() {
         {/* CLIENTS */}
         {activeView === 'clients' && (
           <div className="space-y-8 anim-rise">
-            <div className="flex flex-col items-end justify-between gap-6 md:flex-row">
+            <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
               <div>
                 <Eyebrow>Cartera</Eyebrow>
-                <h2 className="display mt-3 text-5xl md:text-6xl">
+                <h2 className="display mt-3 text-4xl md:text-6xl">
                   Clientes <span className="text-text-subtle">({processedStores.length})</span>
                 </h2>
               </div>
-              <div className="flex w-full gap-3 md:w-auto">
+              <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
                 <div className="flex rounded-full border border-rule bg-ink-2 p-1">
                   {['todos', 'gastronomia', 'turnos'].map((f) => (
                     <button
                       key={f}
                       onClick={() => setCategoryFilter(f)}
-                      className={`mono rounded-full px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all ${
+                      className={`mono flex-1 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all md:flex-none md:px-4 ${
                         categoryFilter === f
                           ? 'bg-acid text-ink'
                           : 'text-text-muted hover:text-text'
@@ -511,22 +522,17 @@ export default function SuperAdmin() {
                 return (
                 <div
                   key={s.id}
-                  className="group flex flex-col items-start justify-between gap-5 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-5 transition-colors hover:border-text-muted md:flex-row md:items-center"
+                  className="group flex flex-col gap-4 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-4 transition-colors hover:border-text-muted md:flex-row md:items-center md:justify-between md:gap-5 md:p-5"
                 >
-                  <div className="flex w-full items-center gap-5 md:w-auto">
+                  <div className="flex w-full items-start gap-4 md:w-auto md:items-center md:gap-5">
                     <div
-                      className={`display flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-xl ${avatarClass}`}
+                      className={`display flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-lg md:h-14 md:w-14 md:text-xl ${avatarClass}`}
                     >
                       {s.name.substring(0, 2).toUpperCase()}
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="display text-xl text-text">{s.name}</h4>
-                        {s.is_demo && (
-                          <span className="mono rounded-sm bg-acid/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-acid">
-                            Demo
-                          </span>
-                        )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="display truncate text-lg text-text md:text-xl">{s.name}</h4>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {(() => {
                           const planId = normalizePlanId(s.plan_type);
                           const plan = getPlan(planId);
@@ -538,31 +544,32 @@ export default function SuperAdmin() {
                               : 'border-signal text-signal-soft';
                           return (
                             <span
-                              className={`mono rounded-sm border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] ${tone}`}
+                              className={`mono rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] ${tone}`}
                             >
                               {plan?.label || s.plan_type || 'Sin plan'}
                             </span>
                           );
                         })()}
+                        {s.is_demo && (
+                          <span className="mono rounded-sm bg-acid/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-acid">
+                            Demo
+                          </span>
+                        )}
                         {s.is_active === false && (
-                          <span className="mono rounded-sm border border-text-subtle/40 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-text-muted">
-                            Local cerrado
+                          <span className="mono rounded-sm border border-text-subtle/40 bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-text-muted">
+                            Cerrado
                           </span>
                         )}
                       </div>
-                      <div className="mono mt-2 flex flex-wrap gap-3 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                      <div className="mono mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
                         <span className="inline-flex items-center gap-1 text-ml-soft">
                           <ListChecks className="h-3 w-3" /> {s.orders?.[0]?.count || 0} tx
                         </span>
-                        <span>·</span>
                         <span className={licenseToneClass}>{license.label}</span>
                         {s.subscription_expiry && new Date(s.subscription_expiry) > new Date() && (
-                          <>
-                            <span>·</span>
-                            <span className="text-text-muted">
-                              Vence {new Date(s.subscription_expiry).toLocaleDateString('es-AR')}
-                            </span>
-                          </>
+                          <span className="text-text-muted">
+                            Vence {new Date(s.subscription_expiry).toLocaleDateString('es-AR')}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -570,20 +577,22 @@ export default function SuperAdmin() {
                   <div className="flex w-full items-center gap-2 md:w-auto md:justify-end">
                     <button
                       onClick={() => openEditModal(s)}
-                      className="rounded-[var(--radius-sm)] border border-rule bg-white/5 p-2.5 text-text-muted hover:border-text hover:text-text"
+                      className="shrink-0 rounded-[var(--radius-sm)] border border-rule bg-white/5 p-2.5 text-text-muted hover:border-text hover:text-text"
+                      aria-label="Editar"
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <a
                       href={`/${s.slug}/admin`}
                       target="_blank"
-                      className="mono inline-flex items-center gap-2 rounded-[var(--radius-sm)] bg-acid px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink hover:brightness-110"
+                      className="mono inline-flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-acid px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink hover:brightness-110 md:flex-none"
                     >
                       <LogIn className="h-3.5 w-3.5" /> Control
                     </a>
                     <button
                       onClick={() => deleteStore(s.id)}
-                      className="rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 p-2.5 text-signal hover:bg-signal hover:text-white"
+                      className="shrink-0 rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 p-2.5 text-signal hover:bg-signal hover:text-white"
+                      aria-label="Borrar"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -743,18 +752,20 @@ export default function SuperAdmin() {
 
         {/* MODAL CREAR */}
         {showCreateModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/95 p-6 backdrop-blur-md anim-fade">
-            <div className="relative w-full max-w-xl overflow-hidden rounded-[var(--radius-2xl)] border border-rule-strong bg-ink-2 p-10 shadow-[var(--shadow-editorial)]">
+          <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-ink/95 backdrop-blur-md anim-fade md:items-center md:overflow-y-auto md:p-6">
+            <div className="relative flex w-full max-w-xl flex-col overflow-hidden border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] md:my-8 md:rounded-[var(--radius-2xl)]">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="absolute right-6 top-6 rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                className="absolute right-5 top-5 z-10 rounded-full border border-rule bg-ink-2 p-2 text-text-muted hover:border-text hover:text-text md:right-6 md:top-6"
+                aria-label="Cerrar"
               >
                 <X className="h-4 w-4" />
               </button>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-6 md:p-10">
               <Eyebrow>
                 <Briefcase className="h-3 w-3" /> Alta
               </Eyebrow>
-              <h3 className="display mt-3 text-4xl text-text">
+              <h3 className="display mt-3 text-3xl text-text md:text-4xl">
                 Nuevo <em className="display-italic text-acid">negocio</em>
               </h3>
               <p className="mt-3 text-sm text-text-muted">Definí el plan y el tipo de vertical inicial.</p>
@@ -894,24 +905,27 @@ export default function SuperAdmin() {
                   )}
                 </button>
               </form>
+              </div>
             </div>
           </div>
         )}
 
         {/* MODAL EDITAR */}
         {showEditModal && editingStore && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/95 p-6 backdrop-blur-md anim-fade">
-            <div className="relative w-full max-w-lg rounded-[var(--radius-2xl)] border border-rule-strong bg-ink-2 p-10 shadow-[var(--shadow-editorial)]">
+          <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-ink/95 backdrop-blur-md anim-fade md:items-center md:overflow-y-auto md:p-6">
+            <div className="relative flex w-full max-w-lg flex-col overflow-hidden border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] md:my-8 md:rounded-[var(--radius-2xl)]">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="absolute right-6 top-6 rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                className="absolute right-5 top-5 z-10 rounded-full border border-rule bg-ink-2 p-2 text-text-muted hover:border-text hover:text-text md:right-6 md:top-6"
+                aria-label="Cerrar"
               >
                 <X className="h-4 w-4" />
               </button>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-6 md:p-10">
               <Eyebrow>
                 <Edit className="h-3 w-3" /> Editar
               </Eyebrow>
-              <h3 className="display mt-3 text-3xl text-text">
+              <h3 className="display mt-3 text-2xl text-text md:text-3xl">
                 {editingStore.name}
               </h3>
 
@@ -980,24 +994,27 @@ export default function SuperAdmin() {
                   <Save className="h-4 w-4" /> Guardar cambios
                 </button>
               </form>
+              </div>
             </div>
           </div>
         )}
 
         {/* MODAL NOTIFICACIÓN */}
         {showNotifyModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/95 p-6 backdrop-blur-md anim-fade">
-            <div className="relative w-full max-w-lg rounded-[var(--radius-2xl)] border border-rule-strong bg-ink-2 p-10 shadow-[var(--shadow-editorial)]">
+          <div className="fixed inset-0 z-[100] flex items-stretch justify-center bg-ink/95 backdrop-blur-md anim-fade md:items-center md:overflow-y-auto md:p-6">
+            <div className="relative flex w-full max-w-lg flex-col overflow-hidden border border-rule-strong bg-ink-2 shadow-[var(--shadow-editorial)] md:my-8 md:rounded-[var(--radius-2xl)]">
               <button
                 onClick={() => setShowNotifyModal(false)}
-                className="absolute right-6 top-6 rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                className="absolute right-5 top-5 z-10 rounded-full border border-rule bg-ink-2 p-2 text-text-muted hover:border-text hover:text-text md:right-6 md:top-6"
+                aria-label="Cerrar"
               >
                 <X className="h-4 w-4" />
               </button>
+              <div className="flex-1 overflow-y-auto overscroll-contain p-6 md:p-10">
               <Eyebrow>
                 <Bell className="h-3 w-3" /> Broadcast
               </Eyebrow>
-              <h3 className="display mt-3 text-4xl text-text">
+              <h3 className="display mt-3 text-3xl text-text md:text-4xl">
                 Nuevo <em className="display-italic text-acid">aviso</em>
               </h3>
 
@@ -1039,6 +1056,7 @@ export default function SuperAdmin() {
                   Enviar ahora <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
+              </div>
             </div>
           </div>
         )}
