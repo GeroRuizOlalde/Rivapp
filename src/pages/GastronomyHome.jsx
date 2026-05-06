@@ -548,17 +548,20 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
 
       if (paymentMethod === 'mercadopago') {
         const { data: mpData, error: mpError } = await supabase.functions.invoke('create-order-preference', {
-          body: JSON.stringify({
+          body: {
             store_id: config.id,
-            items: cart,
+            items: cart.map((item) => ({
+              name: item.name,
+              price: Number(item.finalPrice ?? item.price ?? 0),
+              quantity: Number(item.quantity || 1),
+            })),
             order_id: newOrder.id,
-            domain_url: window.location.origin,
-          }),
-          headers: { 'Content-Type': 'application/json' },
+            tracking_token: newOrder.tracking_token || newOrder.id,
+          },
         });
 
-        if (mpError) {
-          logger.error('Error MP:', mpError);
+        if (mpError || mpData?.error) {
+          logger.error('Error MP:', mpError || mpData?.error);
           toast.warning('Error conectando con MP. Enviando como pedido normal.');
         } else if (mpData?.init_point) {
           window.location.href = mpData.init_point;

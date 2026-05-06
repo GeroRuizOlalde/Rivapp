@@ -363,18 +363,17 @@ export default function BookingHome() {
 
       if (paymentMethod === 'mercadopago') {
         const { data: mpData, error: mpError } = await supabase.functions.invoke('create-order-preference', {
-          body: JSON.stringify({
+          body: {
             store_id: store.id,
             items: [{ name: selectedService.name, price: finalPrice, quantity: 1 }],
             order_id: newApt.id,
-            domain_url: window.location.origin,
+            tracking_token: newApt.tracking_token || newApt.id,
             type: 'appointment',
-          }),
-          headers: { 'Content-Type': 'application/json' },
+          },
         });
 
-        if (mpError) {
-          logger.error('Error MP:', mpError);
+        if (mpError || mpData?.error) {
+          logger.error('Error MP:', mpError || mpData?.error);
           toast.warning('Error conectando con Mercado Pago. Reserva guardada.');
         } else if (mpData?.init_point) {
           window.location.href = mpData.init_point;
@@ -451,8 +450,15 @@ export default function BookingHome() {
     ? selectedService?.price * (1 - appliedCoupon.discount / 100)
     : selectedService?.price;
 
+  // Override --color-acid con el color del negocio. Todas las clases bg-acid /
+  // text-acid / border-acid debajo de este wrapper se pintan con el color real.
+  const brandColor = store?.color_accent || '#D0FF00';
+
   return (
-    <div className="relative min-h-screen bg-ink pb-24 text-text">
+    <div
+      className="relative min-h-screen bg-ink pb-24 text-text"
+      style={{ '--color-acid': brandColor }}
+    >
       <div className="pointer-events-none absolute inset-0 z-0 grain" aria-hidden />
 
       {/* Header */}
