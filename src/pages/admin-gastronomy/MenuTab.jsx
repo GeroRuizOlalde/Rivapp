@@ -19,7 +19,7 @@ export default function MenuTab({
   );
 
   return (
-    <div className="anim-rise">
+    <div className="mx-auto max-w-5xl pb-20 anim-rise">
       <header className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
         <div>
           <Eyebrow>Catálogo</Eyebrow>

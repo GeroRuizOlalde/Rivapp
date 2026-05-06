@@ -5,7 +5,7 @@ import Eyebrow from '../../components/shared/ui/Eyebrow';
 
 export default function CouponsTab({ coupons, onCreateCoupon, onDeleteCoupon }) {
   return (
-    <div className="anim-rise">
+    <div className="mx-auto max-w-5xl pb-20 anim-rise">
       <header className="mb-8 flex items-end justify-between">
         <div>
           <Eyebrow>Marketing</Eyebrow>

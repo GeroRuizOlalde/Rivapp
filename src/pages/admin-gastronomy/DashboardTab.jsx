@@ -26,7 +26,7 @@ export default function DashboardTab({
   const branchLabel = !viewBranchId ? 'Todas las sucursales' : getBranchName(viewBranchId);
 
   return (
-    <div className="space-y-8 anim-rise">
+    <div className="mx-auto max-w-6xl space-y-8 pb-20 anim-rise">
       <header className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
         <div>
           <Eyebrow>Panel</Eyebrow>

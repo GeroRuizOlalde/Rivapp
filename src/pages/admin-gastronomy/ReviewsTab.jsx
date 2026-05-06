@@ -4,7 +4,7 @@ import Eyebrow from '../../components/shared/ui/Eyebrow';
 
 export default function ReviewsTab({ reviews, accentColor }) {
   return (
-    <div className="anim-rise">
+    <div className="mx-auto max-w-5xl pb-20 anim-rise">
       <header className="mb-8">
         <Eyebrow>Opiniones</Eyebrow>
         <h1 className="display mt-3 text-4xl md:text-5xl">

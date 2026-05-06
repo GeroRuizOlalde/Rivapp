@@ -5,7 +5,7 @@ import Eyebrow from '../../components/shared/ui/Eyebrow';
 
 export default function RidersTab({ riders, onCreateRider, onDeleteRider }) {
   return (
-    <div className="anim-rise">
+    <div className="mx-auto max-w-5xl pb-20 anim-rise">
       <header className="mb-8 flex items-end justify-between">
         <div>
           <Eyebrow>Flota</Eyebrow>

@@ -5,7 +5,7 @@ import Eyebrow from '../../components/shared/ui/Eyebrow';
 
 export default function CRMTab({ customers, onExportCustomers }) {
   return (
-    <div className="space-y-8 anim-rise">
+    <div className="mx-auto max-w-5xl space-y-8 pb-20 anim-rise">
       <header className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
         <div>
           <Eyebrow>CRM</Eyebrow>
