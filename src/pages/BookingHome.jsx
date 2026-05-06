@@ -362,7 +362,7 @@ export default function BookingHome() {
       if (error) throw error;
 
       if (paymentMethod === 'mercadopago') {
-        const { data: mpData, error: mpError } = await supabase.functions.invoke('create-order-preference', {
+        const invokeRes = await supabase.functions.invoke('create-order-preference', {
           body: {
             store_id: store.id,
             items: [{ name: selectedService.name, price: finalPrice, quantity: 1 }],
@@ -371,10 +371,27 @@ export default function BookingHome() {
             type: 'appointment',
           },
         });
+        const mpData = invokeRes.data;
+        const mpError = invokeRes.error;
 
-        if (mpError || mpData?.error) {
-          logger.error('Error MP:', mpError || mpData?.error);
-          toast.warning('Error conectando con Mercado Pago. Reserva guardada.');
+        // Cuando la function responde con 4xx, supabase-js pone error en
+        // .error y guarda el body de la respuesta en error.context (Response).
+        // Intentamos extraer el mensaje real de la function.
+        let errMsg = null;
+        if (mpError) {
+          try {
+            const ctx = await mpError.context?.json?.();
+            errMsg = ctx?.error || mpError.message;
+          } catch {
+            errMsg = mpError.message;
+          }
+        } else if (mpData?.error) {
+          errMsg = mpData.error;
+        }
+
+        if (errMsg) {
+          logger.error('Error MP:', errMsg);
+          toast.warning(errMsg);
         } else if (mpData?.init_point) {
           window.location.href = mpData.init_point;
           return;

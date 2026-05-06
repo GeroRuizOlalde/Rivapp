@@ -404,6 +404,46 @@ export default function AdminServices() {
     [appointments, selectedDate]
   );
 
+  // Vista de agenda: 'month' | 'week' | 'day'
+  const [agendaView, setAgendaView] = useState('day');
+
+  // Lunes de la semana que contiene `date`
+  const getStartOfWeek = (date) => {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 (dom) - 6 (sáb)
+    const diff = day === 0 ? -6 : 1 - day; // mover a lunes
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const weekDays = useMemo(() => {
+    const start = getStartOfWeek(selectedDate);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [selectedDate]);
+
+  const appointmentsByDay = useMemo(() => {
+    const map = new Map();
+    appointments
+      .filter((a) => a.status === 'confirmado')
+      .forEach((a) => {
+        const key = new Date(a.start_time).toLocaleDateString('en-CA');
+        const list = map.get(key) || [];
+        list.push(a);
+        map.set(key, list);
+      });
+    map.forEach((list) =>
+      list.sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+    );
+    return map;
+  }, [appointments]);
+
+  const aptsForDate = (date) => appointmentsByDay.get(date.toLocaleDateString('en-CA')) || [];
+
   const stats = useMemo(() => {
     const today = new Date();
     const todayApts = appointments.filter((a) => isSameDay(new Date(a.start_time), today));
@@ -1114,63 +1154,240 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'agenda' && (
-          <div className="flex h-full flex-col gap-8 anim-rise md:flex-row">
-            <div className="h-fit w-full shrink-0 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6 md:w-[400px]">
-              <header className="mb-6 flex items-center justify-between">
-                <button
-                  onClick={() => changeMonth(-1)}
-                  className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <p className="display text-xl capitalize">
-                  {MONTHS[currentDate.getMonth()]}{' '}
-                  <span className="num text-text-muted">{currentDate.getFullYear()}</span>
-                </p>
-                <button
-                  onClick={() => changeMonth(1)}
-                  className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </header>
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {getDaysInMonth(currentDate).map((d, i) =>
-                  d ? (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedDate(d)}
-                      className={`num flex aspect-square flex-col items-center justify-center rounded-[var(--radius-sm)] transition-colors ${
-                        isSameDay(d, selectedDate) ? 'text-ink' : 'hover:bg-white/5 text-text'
-                      }`}
-                      style={isSameDay(d, selectedDate) ? { backgroundColor: accentColor } : {}}
-                    >
-                      <span className="text-sm">{d.getDate()}</span>
-                      {getDailyLoad(d) > 0 && (
-                        <div className="mt-1 h-1 w-1 rounded-full bg-current" />
-                      )}
-                    </button>
-                  ) : (
-                    <div key={i} />
-                  )
-                )}
+          <div className="flex h-full flex-col gap-6 anim-rise">
+            {/* Header común con switcher de vista + botón Agendar */}
+            <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <Eyebrow>Agenda</Eyebrow>
+                <h1 className="display mt-3 text-3xl capitalize md:text-4xl">
+                  {agendaView === 'day'
+                    ? selectedDate.toLocaleDateString('es-AR', {
+                        weekday: 'long', day: 'numeric', month: 'long',
+                      })
+                    : agendaView === 'week'
+                    ? `Semana del ${weekDays[0].getDate()} ${MONTHS[weekDays[0].getMonth()]}`
+                    : `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+                </h1>
               </div>
-            </div>
-
-            <div className="flex-1">
-              <header className="mb-6 flex items-end justify-between">
-                <div>
-                  <Eyebrow>Agenda</Eyebrow>
-                  <h1 className="display mt-3 text-3xl capitalize md:text-4xl">
-                    {selectedDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </h1>
+              <div className="flex items-center gap-3">
+                <div className="flex rounded-full border border-rule bg-ink-2 p-1">
+                  {[
+                    { id: 'day', label: 'Día' },
+                    { id: 'week', label: 'Semana' },
+                    { id: 'month', label: 'Mes' },
+                  ].map((v) => {
+                    const active = agendaView === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => setAgendaView(v.id)}
+                        className={`mono rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] transition-colors ${
+                          active ? 'text-ink' : 'text-text-muted hover:text-text'
+                        }`}
+                        style={active ? { backgroundColor: accentColor } : {}}
+                      >
+                        {v.label}
+                      </button>
+                    );
+                  })}
                 </div>
                 <Button onClick={() => setShowManualModal(true)} variant="acid" size="md">
                   <Plus className="h-4 w-4" /> Agendar
                 </Button>
-              </header>
+              </div>
+            </header>
 
-              <div className="space-y-3">
+            {/* MES — calendario grande con turnos por día */}
+            {agendaView === 'month' && (
+              <div className="rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-4 md:p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <button
+                    onClick={() => changeMonth(-1)}
+                    className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                    aria-label="Mes anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <p className="display text-lg capitalize md:text-xl">
+                    {MONTHS[currentDate.getMonth()]}{' '}
+                    <span className="num text-text-muted">{currentDate.getFullYear()}</span>
+                  </p>
+                  <button
+                    onClick={() => changeMonth(1)}
+                    className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                    aria-label="Mes siguiente"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mb-2 grid grid-cols-7 gap-1 text-center">
+                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
+                    <p
+                      key={`${d}-${i}`}
+                      className="mono py-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle"
+                    >
+                      {d}
+                    </p>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {getDaysInMonth(currentDate).map((d, i) => {
+                    if (!d) return <div key={i} className="aspect-square md:aspect-[5/4]" />;
+                    const dayApts = aptsForDate(d);
+                    const isToday = isSameDay(d, new Date());
+                    const isSelected = isSameDay(d, selectedDate);
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setSelectedDate(d);
+                          setAgendaView('day');
+                        }}
+                        className={`flex aspect-square flex-col items-start justify-between rounded-[var(--radius-sm)] border p-1.5 text-left transition-colors md:aspect-[5/4] md:p-2 ${
+                          isSelected
+                            ? 'border-transparent text-ink'
+                            : 'border-rule bg-ink-3 hover:border-text-muted'
+                        }`}
+                        style={isSelected ? { backgroundColor: accentColor } : {}}
+                      >
+                        <span
+                          className={`num text-sm font-semibold md:text-base ${
+                            isToday && !isSelected ? '' : ''
+                          }`}
+                          style={isToday && !isSelected ? { color: accentColor } : {}}
+                        >
+                          {d.getDate()}
+                        </span>
+                        {dayApts.length > 0 && (
+                          <span
+                            className={`mono text-[9px] font-semibold uppercase tracking-[0.18em] ${
+                              isSelected ? '' : 'text-text-muted'
+                            }`}
+                          >
+                            {dayApts.length}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SEMANA — 7 columnas con turnos por día */}
+            {agendaView === 'week' && (
+              <div className="overflow-x-auto">
+                <div className="grid min-w-[840px] grid-cols-7 gap-2">
+                  {weekDays.map((d) => {
+                    const dayApts = aptsForDate(d);
+                    const isToday = isSameDay(d, new Date());
+                    return (
+                      <div
+                        key={d.toISOString()}
+                        className={`flex flex-col rounded-[var(--radius-md)] border bg-ink-2 ${
+                          isToday ? 'border-rule-strong' : 'border-rule'
+                        }`}
+                      >
+                        <button
+                          onClick={() => {
+                            setSelectedDate(d);
+                            setAgendaView('day');
+                          }}
+                          className="border-b border-rule px-3 py-2 text-left transition-colors hover:bg-white/[0.03]"
+                        >
+                          <p className="mono text-[9px] uppercase tracking-[0.22em] text-text-subtle">
+                            {d.toLocaleDateString('es-AR', { weekday: 'short' })}
+                          </p>
+                          <p
+                            className="num display mt-0.5 text-xl"
+                            style={isToday ? { color: accentColor } : {}}
+                          >
+                            {d.getDate()}
+                          </p>
+                        </button>
+                        <div className="flex-1 space-y-1 p-2">
+                          {dayApts.length === 0 && (
+                            <p className="mono py-2 text-center text-[9px] uppercase tracking-[0.2em] text-text-subtle">
+                              —
+                            </p>
+                          )}
+                          {dayApts.map((apt) => (
+                            <button
+                              key={apt.id}
+                              onClick={() => setCrmModal(apt)}
+                              className="w-full rounded-[var(--radius-sm)] border border-rule bg-ink-3 p-2 text-left transition-colors hover:border-text-muted"
+                              style={{ borderLeftColor: accentColor, borderLeftWidth: 2 }}
+                            >
+                              <p className="num text-xs font-semibold text-text">
+                                {new Date(apt.start_time).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                              <p className="mt-0.5 truncate text-[11px] text-text">
+                                {apt.customer_name}
+                              </p>
+                              <p className="mono mt-0.5 truncate text-[9px] uppercase tracking-[0.18em] text-text-subtle">
+                                {apt.services?.name || ''}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* DÍA — calendario chico + lista (vista original) */}
+            {agendaView === 'day' && (
+              <div className="flex flex-col gap-6 md:flex-row">
+                <div className="h-fit w-full shrink-0 rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6 md:w-[360px]">
+                  <header className="mb-4 flex items-center justify-between">
+                    <button
+                      onClick={() => changeMonth(-1)}
+                      className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                      aria-label="Mes anterior"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <p className="display text-lg capitalize">
+                      {MONTHS[currentDate.getMonth()]}{' '}
+                      <span className="num text-text-muted">{currentDate.getFullYear()}</span>
+                    </p>
+                    <button
+                      onClick={() => changeMonth(1)}
+                      className="rounded-full border border-rule p-2 text-text-muted hover:border-text hover:text-text"
+                      aria-label="Mes siguiente"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </header>
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {getDaysInMonth(currentDate).map((d, i) =>
+                      d ? (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedDate(d)}
+                          className={`num flex aspect-square flex-col items-center justify-center rounded-[var(--radius-sm)] transition-colors ${
+                            isSameDay(d, selectedDate) ? 'text-ink' : 'hover:bg-white/5 text-text'
+                          }`}
+                          style={isSameDay(d, selectedDate) ? { backgroundColor: accentColor } : {}}
+                        >
+                          <span className="text-sm">{d.getDate()}</span>
+                          {getDailyLoad(d) > 0 && (
+                            <div className="mt-1 h-1 w-1 rounded-full bg-current" />
+                          )}
+                        </button>
+                      ) : (
+                        <div key={i} />
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-3">
                 {filteredAppointments.map((apt) => (
                   <div
                     key={apt.id}
@@ -1244,8 +1461,9 @@ export default function AdminServices() {
                     Sin turnos confirmados
                   </p>
                 )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 

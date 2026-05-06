@@ -43,11 +43,33 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { items, store_id, delivery_cost, order_id, tracking_token } = await req.json();
+    let parsedBody: Record<string, unknown> = {};
+    try {
+      parsedBody = await req.json();
+    } catch (err) {
+      console.error('Body inválido (no JSON):', err);
+      return json({ error: 'Body inválido. Esperado JSON.' }, 400);
+    }
+    console.log('create-order-preference body:', JSON.stringify(parsedBody));
 
-    if (!store_id) return json({ error: 'Falta store_id' }, 400);
-    if (!order_id) return json({ error: 'Falta order_id' }, 400);
+    const { items, store_id, delivery_cost, order_id, tracking_token } = parsedBody as {
+      items?: { name: string; price: number; quantity: number }[];
+      store_id?: string;
+      delivery_cost?: number;
+      order_id?: string;
+      tracking_token?: string;
+    };
+
+    if (!store_id) {
+      console.error('Falta store_id');
+      return json({ error: 'Falta store_id' }, 400);
+    }
+    if (!order_id) {
+      console.error('Falta order_id');
+      return json({ error: 'Falta order_id' }, 400);
+    }
     if (!Array.isArray(items) || items.length === 0) {
+      console.error('Faltan items');
       return json({ error: 'Faltan items del pedido' }, 400);
     }
 
@@ -55,10 +77,21 @@ serve(async (req) => {
       .from('store_secrets')
       .select('mp_access_token')
       .eq('id', store_id)
-      .single();
+      .maybeSingle();
 
-    if (secretError || !secrets?.mp_access_token) {
-      return json({ error: 'El comercio no tiene configurado Mercado Pago.' }, 400);
+    if (secretError) {
+      console.error('Error leyendo store_secrets:', secretError);
+      return json({ error: `Error de DB: ${secretError.message}` }, 500);
+    }
+    if (!secrets?.mp_access_token) {
+      console.error(`store_secrets sin mp_access_token para store_id=${store_id}`);
+      return json(
+        {
+          error:
+            'El comercio aún no configuró Mercado Pago. El dueño debe cargar sus credenciales MP desde el admin (Ajustes → Mercado Pago).',
+        },
+        400
+      );
     }
 
     // Webhook scoped por store_id (multi-tenant)
