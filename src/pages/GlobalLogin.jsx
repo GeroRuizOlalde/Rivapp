@@ -67,6 +67,7 @@ export default function GlobalLogin() {
 
       // Si vino con link de invitación, aceptarla ANTES de seguir.
       // accept-invitation usa service role internamente, no necesita JWT activo.
+      let invitationStoreSlug = null;
       if (inviteId) {
         const acceptRes = await supabase.functions.invoke('accept-invitation', {
           body: {
@@ -89,6 +90,10 @@ export default function GlobalLogin() {
         if (acceptErr) {
           throw new Error('No se pudo aceptar la invitación: ' + acceptErr);
         }
+        // La function nos devolvió slug y role — los usamos para navegar
+        // sin depender de queries posteriores (que pueden tener problemas
+        // de RLS o de timing con el user_id real).
+        invitationStoreSlug = acceptRes.data?.store?.slug || null;
       }
 
       // Si no hay sesión activa (caso típico cuando email_confirm está activo),
@@ -105,6 +110,22 @@ export default function GlobalLogin() {
 
       if (isPlatformAdmin(user)) {
         navigate('/master-panel');
+        return;
+      }
+
+      // Atajo: si veníamos por invitación y la function devolvió el slug,
+      // ir directo al admin de esa tienda sin pasar por las queries de
+      // memberships. Más rápido y robusto.
+      if (invitationStoreSlug) {
+        localStorage.setItem(
+          'rivapp_session',
+          JSON.stringify({
+            id: user.id,
+            email: user.email,
+            slug: invitationStoreSlug,
+          })
+        );
+        navigate(`/${invitationStoreSlug}/admin`);
         return;
       }
 
