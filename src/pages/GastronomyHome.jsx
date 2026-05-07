@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 
 import { useCartStore } from '../store/useCartStore';
 import { useMenuData } from '../hooks/useMenuData';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import {
   Search, Loader2, Lock, X, Banknote, CreditCard, MapPin, Copy, Check, Navigation,
   Ruler, Clock, AlertTriangle, ShoppingBag, Plus, Minus, ChevronRight, Phone, User,
@@ -1004,6 +1005,16 @@ export default function GastronomyHome() {
   const toast = useToast();
 
   const brandColor = safeConfig.color_accent || '#D0FF00';
+
+  useDocumentMeta({
+    title: config?.name ? `${config.name} — Pedí online` : 'Rivapp',
+    description: config?.name
+      ? `Hacé tu pedido online en ${config.name}. Menú, delivery y cobros simples.`
+      : 'Pedí online de tu local favorito.',
+    image: config?.banner_url || config?.logo_url,
+    themeColor: brandColor,
+    type: 'website',
+  });
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);

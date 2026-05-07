@@ -12,6 +12,7 @@ import Field from '../components/shared/ui/Field';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -454,6 +455,20 @@ export default function BookingHome() {
     }
   };
 
+  // Override --color-acid con el color del negocio. Todas las clases bg-acid /
+  // text-acid / border-acid debajo de este wrapper se pintan con el color real.
+  const brandColor = store?.color_accent || '#D0FF00';
+
+  useDocumentMeta({
+    title: store?.name ? `${store.name} — Reservar turno` : 'Rivapp',
+    description: store?.name
+      ? `Reservá tu turno en ${store.name} fácil y rápido. Elegí servicio, profesional y horario.`
+      : 'Reservá un turno online.',
+    image: store?.banner_url || store?.logo_url,
+    themeColor: brandColor,
+    type: 'website',
+  });
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-ink">
@@ -466,10 +481,6 @@ export default function BookingHome() {
   const finalPriceCalc = appliedCoupon
     ? selectedService?.price * (1 - appliedCoupon.discount / 100)
     : selectedService?.price;
-
-  // Override --color-acid con el color del negocio. Todas las clases bg-acid /
-  // text-acid / border-acid debajo de este wrapper se pintan con el color real.
-  const brandColor = store?.color_accent || '#D0FF00';
 
   return (
     <div

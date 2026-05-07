@@ -22,14 +22,18 @@ export function useNotifications(storeId, { soundEnabled = false } = {}) {
       setUnreadCount(data.filter(n => !n.is_read).length);
     }
     setLoading(false);
+    // Recién acá marcamos que terminó la carga inicial. Cualquier INSERT
+    // que llegue por realtime después de esto SÍ debería disparar toast.
+    isFirstLoad.current = false;
   }, [storeId]);
 
   // Escuchar nuevas notificaciones en tiempo real
   useEffect(() => {
     if (!storeId) return;
-    void (async () => {
-      await fetchNotifications();
-    })();
+    isFirstLoad.current = true; // reset cuando cambia el storeId
+    // setState dentro del effect es intencional (carga inicial de datos).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchNotifications();
 
     const channel = supabase.channel(`store_notif_${storeId}`)
       .on('postgres_changes', {
@@ -39,20 +43,19 @@ export function useNotifications(storeId, { soundEnabled = false } = {}) {
         filter: `store_id=eq.${storeId}`
       }, (payload) => {
         const newNotif = payload.new;
-        // Agregar a la lista
-        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+        setNotifications(prev => {
+          // Evitar duplicados si por carrera el INSERT llega antes que el fetch.
+          if (prev.some(n => n.id === newNotif.id)) return prev;
+          return [newNotif, ...prev].slice(0, 50);
+        });
         setUnreadCount(prev => prev + 1);
 
-        // Solo mostrar toast si no es la carga inicial
+        // Solo mostrar toast/sonido si ya terminó la carga inicial.
         if (!isFirstLoad.current) {
-          // Agregar toast
           const toastId = newNotif.id;
           setToasts(prev => [...prev, { ...newNotif, toastId }]);
-
           if (soundEnabled) playSound();
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-
-          // Auto-remover toast después de 5 segundos
           setTimeout(() => {
             setToasts(prev => prev.filter(t => t.toastId !== toastId));
           }, 5000);
@@ -60,12 +63,8 @@ export function useNotifications(storeId, { soundEnabled = false } = {}) {
       })
       .subscribe();
 
-    // Marcar como no primera carga después de un breve delay
-    const timer = setTimeout(() => { isFirstLoad.current = false; }, 2000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearTimeout(timer);
     };
   }, [storeId, fetchNotifications, soundEnabled]);
 

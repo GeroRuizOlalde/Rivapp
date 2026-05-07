@@ -37,6 +37,54 @@ serve(async (req) => {
     const { store_id } = await req.json();
     if (!store_id) return json({ error: 'Falta store_id' }, 400);
 
+    // Resolver rol del caller para saber si filtrar.
+    let callerRole: string | null = null;
+    let callerBranchId: string | null = null;
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (token) {
+      const { data: callerData } = await supabase.auth.getUser(token);
+      const callerId = callerData?.user?.id;
+      if (callerId) {
+        const { data: storeRow } = await supabase
+          .from('stores')
+          .select('owner_id')
+          .eq('id', store_id)
+          .maybeSingle();
+        if (storeRow?.owner_id === callerId) {
+          callerRole = 'owner';
+        } else {
+          const { data: storeMembership } = await supabase
+            .from('store_memberships')
+            .select('role')
+            .eq('store_id', store_id)
+            .eq('user_id', callerId)
+            .maybeSingle();
+          if (storeMembership) {
+            callerRole = storeMembership.role;
+          } else {
+            const { data: bs } = await supabase
+              .from('branches')
+              .select('id')
+              .eq('store_id', store_id);
+            const ids = (bs || []).map((b) => b.id);
+            if (ids.length > 0) {
+              const { data: bm } = await supabase
+                .from('branch_memberships')
+                .select('role, branch_id')
+                .in('branch_id', ids)
+                .eq('user_id', callerId)
+                .maybeSingle();
+              if (bm) {
+                callerRole = bm.role;
+                callerBranchId = bm.branch_id;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // 1) Memberships a nivel TIENDA
     const { data: storeRows, error: storeErr } = await supabase
       .from('store_memberships')
@@ -133,7 +181,16 @@ serve(async (req) => {
       });
     });
 
-    return json({ members });
+    // Si el caller es manager, solo ve miembros de su misma sucursal
+    // (más el owner, que se incluye igual para contexto).
+    let visible = members;
+    if (callerRole === 'manager' && callerBranchId) {
+      visible = members.filter(
+        (m) => m.role === 'owner' || m.branch_id === callerBranchId
+      );
+    }
+
+    return json({ members: visible });
   } catch (error) {
     console.error('Error en list-team-members:', error);
     return json({ error: error.message }, 500);

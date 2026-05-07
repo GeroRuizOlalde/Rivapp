@@ -128,10 +128,23 @@ export default function MenuTab({
           </div>
         ))}
         {visibleItems.length === 0 && (
-          <div className="rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-16 text-center">
-            <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-subtle">
-              Sin productos en esta categoría
-            </p>
+          <div className="flex flex-col items-center gap-4 rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-12 text-center md:p-16">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-rule-strong bg-ink-2 text-text-subtle">
+              <Plus className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="display text-xl text-text">
+                {menuItems.length === 0 ? 'Tu menú está vacío' : 'Sin productos en esta categoría'}
+              </p>
+              <p className="mt-1 max-w-xs text-sm text-text-muted">
+                {menuItems.length === 0
+                  ? 'Agregá tu primer plato para que los clientes puedan pedir.'
+                  : 'Probá con otra categoría o creá el primero.'}
+              </p>
+            </div>
+            <Button onClick={onOpenCreateProductModal} variant="acid" size="md">
+              <Plus className="h-4 w-4" /> Crear el primero
+            </Button>
           </div>
         )}
       </div>

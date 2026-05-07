@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Tag, Trash2 } from 'lucide-react';
 import Button from '../../components/shared/ui/Button';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
 
@@ -28,7 +28,8 @@ export default function CouponsTab({ coupons, onCreateCoupon, onDeleteCoupon }) 
               <Eyebrow tone="acid">Código</Eyebrow>
               <button
                 onClick={() => onDeleteCoupon(c.id)}
-                className="text-text-subtle opacity-0 transition-opacity hover:text-signal group-hover:opacity-100"
+                className="text-text-subtle transition-opacity hover:text-signal md:opacity-0 md:group-hover:opacity-100"
+                aria-label="Borrar cupón"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -40,10 +41,19 @@ export default function CouponsTab({ coupons, onCreateCoupon, onDeleteCoupon }) 
           </div>
         ))}
         {coupons.length === 0 && (
-          <div className="col-span-full rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-16 text-center">
-            <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-subtle">
-              Sin cupones activos
-            </p>
+          <div className="col-span-full flex flex-col items-center gap-4 rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-12 text-center md:p-16">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-rule-strong bg-ink-2 text-text-subtle">
+              <Tag className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="display text-xl text-text">Sin cupones todavía</p>
+              <p className="mt-1 max-w-xs text-sm text-text-muted">
+                Creá descuentos para fidelizar clientes o impulsar ventas.
+              </p>
+            </div>
+            <Button onClick={onCreateCoupon} variant="acid" size="md">
+              <Plus className="h-4 w-4" /> Crear primer cupón
+            </Button>
           </div>
         )}
       </div>

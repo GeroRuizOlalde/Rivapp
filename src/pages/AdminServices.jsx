@@ -20,6 +20,7 @@ import { useToast } from '../components/shared/toastContext';
 import { useConfirm } from '../components/shared/confirmContext';
 import TeamTab from './admin-gastronomy/TeamTab';
 import { TeamModal as TeamInviteModal, RolesModal } from './admin-gastronomy/AdminModals';
+import { buildReminderMessage, buildWhatsAppUrl } from '../utils/whatsapp';
 import { getPlan, isProTier, PLANS, PLAN_IDS, PURCHASABLE_PLANS } from '../config/plans';
 
 const formatPrice = (n) => `$${n.toLocaleString('es-AR')}`;
@@ -523,8 +524,14 @@ export default function AdminServices() {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const text = `Hola *${apt.customer_name}*! 👋\nTe escribo de *${store.name}* para recordarte tu turno:\n\n✂️ ${apt.services?.name}\n📅 ${dateStr} hs\n\nPor favor confirmame si vas a poder asistir. ¡Gracias!`;
-    window.open(`https://wa.me/${apt.customer_phone}?text=${encodeURIComponent(text)}`, '_blank');
+    const text = buildReminderMessage({
+      storeName: store?.name,
+      customerName: apt.customer_name,
+      serviceName: apt.services?.name,
+      dateStr,
+    });
+    const url = buildWhatsAppUrl(apt.customer_phone, text);
+    if (url) window.open(url, '_blank');
   };
 
   // === Gestión de usuarios del panel ===

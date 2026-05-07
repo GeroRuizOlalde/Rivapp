@@ -45,15 +45,27 @@ export default function RidersTab({ riders, onCreateRider, onDeleteRider }) {
             </div>
             <button
               onClick={() => onDeleteRider(r.id)}
-              className="rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 p-2.5 text-signal opacity-0 transition-opacity hover:bg-signal hover:text-white group-hover:opacity-100"
+              className="rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 p-2.5 text-signal transition-opacity hover:bg-signal hover:text-white md:opacity-0 md:group-hover:opacity-100"
+              aria-label="Borrar rider"
             >
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
         ))}
         {riders.length === 0 && (
-          <div className="col-span-full rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-16 text-center">
-            <p className="mono text-[11px] uppercase tracking-[0.22em] text-text-subtle">Sin riders activos</p>
+          <div className="col-span-full flex flex-col items-center gap-4 rounded-[var(--radius-xl)] border border-dashed border-rule-strong p-12 text-center md:p-16">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-rule-strong bg-ink-2 text-text-subtle">
+              <Bike className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="display text-xl text-text">Sin riders todavía</p>
+              <p className="mt-1 max-w-xs text-sm text-text-muted">
+                Sumá tus repartidores para asignarlos a los pedidos.
+              </p>
+            </div>
+            <Button onClick={onCreateRider} variant="acid" size="md">
+              <Plus className="h-4 w-4" /> Agregar primer rider
+            </Button>
           </div>
         )}
       </div>
