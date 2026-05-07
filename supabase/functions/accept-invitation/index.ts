@@ -36,9 +36,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { invite_id, user_id, user_email } = await req.json();
+    const { invite_id, user_id: clientUserId, user_email } = await req.json();
     if (!invite_id) return json({ error: 'Falta invite_id' }, 400);
-    if (!user_id) return json({ error: 'Falta user_id' }, 400);
     if (!user_email) return json({ error: 'Falta user_email' }, 400);
 
     // 1) Cargar invitación
@@ -65,7 +64,37 @@ serve(async (req) => {
       );
     }
 
-    // 2) Crear membership según scope
+    // 2) Resolver el user_id REAL desde auth.users por email.
+    // Esto evita el bug de anti-enumeration de Supabase: cuando signUp se hace
+    // con un email que ya existía, devuelve un user_id obfuscado que NO existe
+    // en auth.users → el insert de membership tira FK violation. Buscando por
+    // email obtenemos siempre el user real.
+    let user_id = clientUserId;
+    try {
+      const { data: usersData, error: listErr } = await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 200,
+      });
+      if (listErr) {
+        console.error('listUsers error:', listErr);
+      } else {
+        const realUser = usersData?.users?.find(
+          (u: { email?: string }) =>
+            (u.email || '').toLowerCase() === String(user_email).toLowerCase()
+        );
+        if (realUser?.id) {
+          user_id = realUser.id;
+        } else {
+          console.error('No encontré user real para email:', user_email);
+        }
+      }
+    } catch (e) {
+      console.error('Error resolviendo user_id:', e);
+    }
+
+    if (!user_id) return json({ error: 'No se pudo identificar tu cuenta' }, 400);
+
+    // 3) Crear membership según scope
     if (invite.branch_id) {
       // Validar que la branch siga existiendo
       const { data: branch } = await supabase
@@ -100,7 +129,7 @@ serve(async (req) => {
       }
     }
 
-    // 3) Marcar invitación como aceptada
+    // 4) Marcar invitación como aceptada
     const { error: updErr } = await supabase
       .from('team_invitations')
       .update({ status: 'accepted' })
@@ -110,7 +139,7 @@ serve(async (req) => {
       // No bloqueamos por esto, el membership ya quedó creado.
     }
 
-    // 4) Auto-confirmar email del invitado. El link ya fue enviado a esa
+    // 5) Auto-confirmar email del invitado. El link ya fue enviado a esa
     // dirección, así que el email está validado de hecho. Si no hacemos esto,
     // Supabase Auth bloquea el siguiente signIn con "Email not confirmed".
     try {
