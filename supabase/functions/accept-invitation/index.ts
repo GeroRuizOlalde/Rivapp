@@ -36,7 +36,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { invite_id, user_id: clientUserId, user_email } = await req.json();
+    const { invite_id, user_id: clientUserId, user_email, password } = await req.json();
     if (!invite_id) return json({ error: 'Falta invite_id' }, 400);
     if (!user_email) return json({ error: 'Falta user_email' }, 400);
 
@@ -139,14 +139,22 @@ serve(async (req) => {
       // No bloqueamos por esto, el membership ya quedó creado.
     }
 
-    // 5) Auto-confirmar email del invitado. El link ya fue enviado a esa
-    // dirección, así que el email está validado de hecho. Si no hacemos esto,
-    // Supabase Auth bloquea el siguiente signIn con "Email not confirmed".
+    // 5) Auto-confirmar email + sincronizar password.
+    // - Email: el link ya llegó a esa dirección, el email está validado de hecho.
+    //   Sin esto, signIn posterior tira "Email not confirmed".
+    // - Password: si el email YA existía en auth.users (de un signUp viejo),
+    //   el signUp del invitado NO actualiza el password (anti-enumeration de
+    //   Supabase). Entonces el password que el invitado puso en el form NUNCA
+    //   queda guardado y al hacer logout no puede volver. Lo seteamos acá.
     try {
-      await supabase.auth.admin.updateUserById(user_id, { email_confirm: true });
+      const updates: { email_confirm: boolean; password?: string } = {
+        email_confirm: true,
+      };
+      if (password) updates.password = password;
+      await supabase.auth.admin.updateUserById(user_id, updates);
     } catch (confirmErr) {
-      console.error('No se pudo auto-confirmar el email:', confirmErr);
-      // No bloqueamos: el usuario quedó con membership; en todo caso confirmará por mail.
+      console.error('No se pudo auto-confirmar/actualizar:', confirmErr);
+      // No bloqueamos: el membership ya quedó creado.
     }
 
     return json({

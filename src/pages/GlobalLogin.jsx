@@ -74,6 +74,11 @@ export default function GlobalLogin() {
             invite_id: inviteId,
             user_id: user.id,
             user_email: user.email,
+            // Mandamos el password para que la function lo persista en
+            // auth.users. Necesario cuando el email ya existía previamente
+            // (caso típico al re-testear): signUp NO actualiza el password,
+            // así que sin esto el invitado no podría volver a loguear.
+            password: formData.password,
           },
         });
         let acceptErr = null;
