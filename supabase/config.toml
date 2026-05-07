@@ -60,6 +60,24 @@ verify_jwt = true
 import_map = "./functions/get-mp-settings-status/deno.json"
 entrypoint = "./functions/get-mp-settings-status/index.ts"
 
+[functions.list-team-members]
+enabled = true
+verify_jwt = true
+import_map = "./functions/list-team-members/deno.json"
+entrypoint = "./functions/list-team-members/index.ts"
+
+[functions.update-team-member]
+enabled = true
+verify_jwt = true
+import_map = "./functions/update-team-member/deno.json"
+entrypoint = "./functions/update-team-member/index.ts"
+
+[functions.remove-team-member]
+enabled = true
+verify_jwt = true
+import_map = "./functions/remove-team-member/deno.json"
+entrypoint = "./functions/remove-team-member/index.ts"
+
 [functions.create-store-owner]
 enabled = true
 verify_jwt = true

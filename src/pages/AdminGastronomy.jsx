@@ -1371,11 +1371,14 @@ export default function AdminGastronomy() {
         )}
         {activeTab === 'team' && (
           <TeamTab
+            storeId={config?.id}
+            branches={branches}
             teamInvites={teamInvites}
             onOpenRolesModal={() => setShowRolesModal(true)}
             onOpenInviteModal={() => setShowTeamModal(true)}
             getBranchName={getBranchName}
             onDeleteInvite={handleDeleteInvite}
+            refreshInvites={fetchTeamInvites}
           />
         )}
         {activeTab === 'menu' && (

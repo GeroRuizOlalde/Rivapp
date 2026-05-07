@@ -18,6 +18,8 @@ import NotificationToast from '../components/admin/NotificationToast';
 import { useNotifications, NOTIFICATION_TAB_MAP } from '../hooks/useNotifications';
 import { useToast } from '../components/shared/toastContext';
 import { useConfirm } from '../components/shared/confirmContext';
+import TeamTab from './admin-gastronomy/TeamTab';
+import { TeamModal as TeamInviteModal, RolesModal } from './admin-gastronomy/AdminModals';
 import { getPlan, isProTier, PLANS, PLAN_IDS, PURCHASABLE_PLANS } from '../config/plans';
 
 const formatPrice = (n) => `$${n.toLocaleString('es-AR')}`;
@@ -49,6 +51,7 @@ const ALL_TABS = [
   { id: 'team', label: 'Equipo', icon: UserCog, proOnly: true },
   { id: 'servicios', label: 'Servicios', icon: Briefcase },
   { id: 'marketing', label: 'Marketing', icon: Tag, proOnly: true },
+  { id: 'users', label: 'Usuarios', icon: Users, proOnly: true },
   { id: 'profile', label: 'Mi negocio', icon: Store },
   { id: 'billing', label: 'Suscripción', icon: CreditCard },
   { id: 'config', label: 'Horarios', icon: Settings },
@@ -137,6 +140,11 @@ export default function AdminServices() {
   const [isSubscribing, setIsSubscribing] = useState(false);
   // Flags de qué credenciales MP están cargadas (sin exponer valores).
   const [mpStatus, setMpStatus] = useState({ mp_access_token: false, mp_public_key: false });
+  // Gestión de USUARIOS DEL PANEL (distinto de "Equipo" que son los profesionales)
+  const [teamInvites, setTeamInvites] = useState([]);
+  const [showTeamInviteModal, setShowTeamInviteModal] = useState(false);
+  const [showRolesInfoModal, setShowRolesInfoModal] = useState(false);
+  const [newMember, setNewMember] = useState({ email: '', role: 'staff', branch_id: '' });
   const [services, setServices] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -517,6 +525,74 @@ export default function AdminServices() {
     });
     const text = `Hola *${apt.customer_name}*! 👋\nTe escribo de *${store.name}* para recordarte tu turno:\n\n✂️ ${apt.services?.name}\n📅 ${dateStr} hs\n\nPor favor confirmame si vas a poder asistir. ¡Gracias!`;
     window.open(`https://wa.me/${apt.customer_phone}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  // === Gestión de usuarios del panel ===
+  const fetchTeamInvites = async () => {
+    if (!store?.id) return;
+    const { data } = await supabase
+      .from('team_invitations')
+      .select('*')
+      .eq('store_id', store.id)
+      .order('created_at', { ascending: false });
+    if (data) setTeamInvites(data);
+  };
+
+  useEffect(() => {
+    if (store?.id) fetchTeamInvites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id]);
+
+  const handleInviteMember = async (e) => {
+    e.preventDefault();
+    if (!newMember.email) return toast.error('Falta el email');
+    try {
+      const payload = {
+        store_id: store.id,
+        email: newMember.email,
+        role: newMember.role,
+        branch_id: newMember.role === 'manager' || newMember.role === 'staff' ? newMember.branch_id || null : null,
+        status: 'pending',
+      };
+      const { data: dbData, error } = await supabase
+        .from('team_invitations')
+        .insert([payload])
+        .select()
+        .single();
+      if (error) throw error;
+      const inviteLink = `${window.location.origin}/login?invite=${dbData.id}`;
+      const { error: fnError } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: newMember.email,
+          role: newMember.role,
+          store_name: store.name,
+          branch_name: null,
+          invite_link: inviteLink,
+        },
+      });
+      if (fnError) {
+        logger.error('Error enviando mail:', fnError);
+        toast.warning('Invitación guardada, pero falló el envío del correo');
+      } else {
+        toast.success(`Invitación enviada a ${newMember.email}`);
+      }
+      setShowTeamInviteModal(false);
+      setNewMember({ email: '', role: 'staff', branch_id: '' });
+      fetchTeamInvites();
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+  };
+
+  const handleDeleteInvite = async (id) => {
+    const ok = await confirm({
+      title: '¿Eliminar invitación?',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
+    await supabase.from('team_invitations').delete().eq('id', id);
+    fetchTeamInvites();
   };
 
   const handleSaveProfile = async (e) => {
@@ -1784,6 +1860,19 @@ export default function AdminServices() {
           </div>
         )}
 
+        {activeTab === 'users' && (
+          <TeamTab
+            storeId={store?.id}
+            branches={[]}
+            teamInvites={teamInvites}
+            onOpenRolesModal={() => setShowRolesInfoModal(true)}
+            onOpenInviteModal={() => setShowTeamInviteModal(true)}
+            getBranchName={() => null}
+            onDeleteInvite={handleDeleteInvite}
+            refreshInvites={fetchTeamInvites}
+          />
+        )}
+
         {activeTab === 'profile' && (
           <div className="mx-auto max-w-5xl pb-20 anim-rise">
             <header className="mb-8">
@@ -2126,6 +2215,17 @@ export default function AdminServices() {
       </main>
 
       {/* Modales */}
+      {showTeamInviteModal && (
+        <TeamInviteModal
+          newMember={newMember}
+          setNewMember={setNewMember}
+          branches={[]}
+          onSubmit={handleInviteMember}
+          onClose={() => setShowTeamInviteModal(false)}
+        />
+      )}
+      {showRolesInfoModal && <RolesModal onClose={() => setShowRolesInfoModal(false)} />}
+
       {showServiceModal && (
         <Modal onClose={() => setShowServiceModal(false)} title={editingService ? 'Editar servicio' : 'Nuevo servicio'}>
           <form onSubmit={handleSaveService} className="space-y-4">
