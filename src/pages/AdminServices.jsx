@@ -1051,7 +1051,7 @@ export default function AdminServices() {
       {/* Main */}
       <main className="h-screen flex-1 overflow-y-auto bg-ink p-6 pb-28 md:p-10 md:pb-10">
         {activeTab === 'dashboard' && (
-          <div className="space-y-8 anim-rise">
+          <div className="mx-auto max-w-6xl space-y-8 pb-20 anim-rise">
             <header className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
                 <Eyebrow>Panel</Eyebrow>
@@ -1153,7 +1153,7 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'inbox' && (
-          <div className="space-y-5 anim-rise">
+          <div className="mx-auto max-w-5xl space-y-5 pb-20 anim-rise">
             <div>
               <Eyebrow>Solicitudes</Eyebrow>
               <h1 className="display mt-3 text-4xl md:text-5xl">
@@ -1512,7 +1512,7 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'team' && (
-          <div className="anim-rise">
+          <div className="mx-auto max-w-5xl pb-20 anim-rise">
             <header className="mb-8 flex items-end justify-between">
               <div>
                 <Eyebrow>Equipo</Eyebrow>
@@ -1566,7 +1566,7 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'servicios' && (
-          <div className="anim-rise">
+          <div className="mx-auto max-w-5xl pb-20 anim-rise">
             <header className="mb-8 flex items-end justify-between">
               <div>
                 <Eyebrow>Catálogo</Eyebrow>
@@ -1617,7 +1617,7 @@ export default function AdminServices() {
         )}
 
         {activeTab === 'marketing' && (
-          <div className="anim-rise">
+          <div className="mx-auto max-w-5xl pb-20 anim-rise">
             <header className="mb-8 flex items-end justify-between">
               <div>
                 <Eyebrow>Marketing</Eyebrow>
