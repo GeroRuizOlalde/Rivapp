@@ -110,6 +110,16 @@ serve(async (req) => {
       // No bloqueamos por esto, el membership ya quedó creado.
     }
 
+    // 4) Auto-confirmar email del invitado. El link ya fue enviado a esa
+    // dirección, así que el email está validado de hecho. Si no hacemos esto,
+    // Supabase Auth bloquea el siguiente signIn con "Email not confirmed".
+    try {
+      await supabase.auth.admin.updateUserById(user_id, { email_confirm: true });
+    } catch (confirmErr) {
+      console.error('No se pudo auto-confirmar el email:', confirmErr);
+      // No bloqueamos: el usuario quedó con membership; en todo caso confirmará por mail.
+    }
+
     return json({
       success: true,
       // @ts-expect-error supabase devuelve relación

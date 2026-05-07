@@ -32,6 +32,7 @@ export default function GlobalLogin() {
 
     try {
       let user = null;
+      let session = null;
 
       if (isRegistering) {
         const { data, error: signUpError } = await supabase.auth.signUp({
@@ -44,9 +45,10 @@ export default function GlobalLogin() {
 
         if (signUpError) throw signUpError;
         user = data.user;
+        session = data.session;
 
-        if (!user && !data.session) {
-          throw new Error('Registro iniciado. Por favor verificá tu correo si es necesario.');
+        if (!user) {
+          throw new Error('No se pudo crear el usuario.');
         }
       } else {
         const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -56,19 +58,15 @@ export default function GlobalLogin() {
 
         if (authError) throw authError;
         user = data.user;
+        session = data.session;
       }
 
       if (!user) {
         throw new Error('No se pudo obtener el usuario.');
       }
 
-      if (isPlatformAdmin(user)) {
-        navigate('/master-panel');
-        return;
-      }
-
-      // Si vino con un link de invitación, aceptarla ANTES de buscar memberships.
-      // Esto crea el membership correspondiente y marca la invite como accepted.
+      // Si vino con link de invitación, aceptarla ANTES de seguir.
+      // accept-invitation usa service role internamente, no necesita JWT activo.
       if (inviteId) {
         const acceptRes = await supabase.functions.invoke('accept-invitation', {
           body: {
@@ -89,10 +87,25 @@ export default function GlobalLogin() {
           acceptErr = acceptRes.data.error;
         }
         if (acceptErr) {
-          // Si la aceptación falla, el user ya quedó creado pero sin acceso.
-          // Mostramos el error y NO redirigimos a create-store.
           throw new Error('No se pudo aceptar la invitación: ' + acceptErr);
         }
+      }
+
+      // Si no hay sesión activa (caso típico cuando email_confirm está activo),
+      // hacer signIn explícito ahora que la invitación confirmó el email.
+      if (!session) {
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        if (signInErr) throw signInErr;
+        user = signInData.user;
+        session = signInData.session;
+      }
+
+      if (isPlatformAdmin(user)) {
+        navigate('/master-panel');
+        return;
       }
 
       let targetStore = null;
