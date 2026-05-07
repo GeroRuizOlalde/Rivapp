@@ -67,6 +67,34 @@ export default function GlobalLogin() {
         return;
       }
 
+      // Si vino con un link de invitación, aceptarla ANTES de buscar memberships.
+      // Esto crea el membership correspondiente y marca la invite como accepted.
+      if (inviteId) {
+        const acceptRes = await supabase.functions.invoke('accept-invitation', {
+          body: {
+            invite_id: inviteId,
+            user_id: user.id,
+            user_email: user.email,
+          },
+        });
+        let acceptErr = null;
+        if (acceptRes.error) {
+          try {
+            const ctx = await acceptRes.error.context?.json?.();
+            acceptErr = ctx?.error || acceptRes.error.message;
+          } catch {
+            acceptErr = acceptRes.error.message;
+          }
+        } else if (acceptRes.data?.error) {
+          acceptErr = acceptRes.data.error;
+        }
+        if (acceptErr) {
+          // Si la aceptación falla, el user ya quedó creado pero sin acceso.
+          // Mostramos el error y NO redirigimos a create-store.
+          throw new Error('No se pudo aceptar la invitación: ' + acceptErr);
+        }
+      }
+
       let targetStore = null;
       let userRole = 'staff';
 
