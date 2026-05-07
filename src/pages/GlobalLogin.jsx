@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase/client';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Lock, Mail, ArrowRight, AlertCircle, Loader2, UserPlus, LogIn, Sparkles, ArrowLeft,
 } from 'lucide-react';
@@ -17,10 +17,8 @@ import { getLicenseState } from '../utils/storeStatus';
 export default function GlobalLogin() {
   const navigate = useNavigate();
   const toast = useToast();
-  const [searchParams] = useSearchParams();
-  const inviteId = searchParams.get('invite');
 
-  const [isRegistering, setIsRegistering] = useState(Boolean(inviteId));
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState(null);
@@ -32,20 +30,15 @@ export default function GlobalLogin() {
 
     try {
       let user = null;
-      let session = null;
 
       if (isRegistering) {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
-          options: {
-            data: { invited_by_link: Boolean(inviteId) },
-          },
         });
 
         if (signUpError) throw signUpError;
         user = data.user;
-        session = data.session;
 
         if (!user) {
           throw new Error('No se pudo crear el usuario.');
@@ -58,79 +51,14 @@ export default function GlobalLogin() {
 
         if (authError) throw authError;
         user = data.user;
-        session = data.session;
       }
 
       if (!user) {
         throw new Error('No se pudo obtener el usuario.');
       }
 
-      // Si vino con link de invitación, aceptarla ANTES de seguir.
-      // accept-invitation usa service role internamente, no necesita JWT activo.
-      let invitationStoreSlug = null;
-      if (inviteId) {
-        const acceptRes = await supabase.functions.invoke('accept-invitation', {
-          body: {
-            invite_id: inviteId,
-            user_id: user.id,
-            user_email: user.email,
-            // Mandamos el password para que la function lo persista en
-            // auth.users. Necesario cuando el email ya existía previamente
-            // (caso típico al re-testear): signUp NO actualiza el password,
-            // así que sin esto el invitado no podría volver a loguear.
-            password: formData.password,
-          },
-        });
-        let acceptErr = null;
-        if (acceptRes.error) {
-          try {
-            const ctx = await acceptRes.error.context?.json?.();
-            acceptErr = ctx?.error || acceptRes.error.message;
-          } catch {
-            acceptErr = acceptRes.error.message;
-          }
-        } else if (acceptRes.data?.error) {
-          acceptErr = acceptRes.data.error;
-        }
-        if (acceptErr) {
-          throw new Error('No se pudo aceptar la invitación: ' + acceptErr);
-        }
-        // La function nos devolvió slug y role — los usamos para navegar
-        // sin depender de queries posteriores (que pueden tener problemas
-        // de RLS o de timing con el user_id real).
-        invitationStoreSlug = acceptRes.data?.store?.slug || null;
-      }
-
-      // Si no hay sesión activa (caso típico cuando email_confirm está activo),
-      // hacer signIn explícito ahora que la invitación confirmó el email.
-      if (!session) {
-        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (signInErr) throw signInErr;
-        user = signInData.user;
-        session = signInData.session;
-      }
-
       if (isPlatformAdmin(user)) {
         navigate('/master-panel');
-        return;
-      }
-
-      // Atajo: si veníamos por invitación y la function devolvió el slug,
-      // ir directo al admin de esa tienda sin pasar por las queries de
-      // memberships. Más rápido y robusto.
-      if (invitationStoreSlug) {
-        localStorage.setItem(
-          'rivapp_session',
-          JSON.stringify({
-            id: user.id,
-            email: user.email,
-            slug: invitationStoreSlug,
-          })
-        );
-        navigate(`/${invitationStoreSlug}/admin`);
         return;
       }
 
@@ -290,21 +218,6 @@ export default function GlobalLogin() {
               <span className="display text-2xl">Rivapp</span>
             </div>
 
-            {inviteId && (
-              <div className="mt-8 rounded-[var(--radius-lg)] border border-acid/40 bg-acid/10 p-5 anim-rise">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-acid text-ink">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="eyebrow-acid">Invitación recibida</p>
-                    <p className="mt-1 text-sm text-text-muted">
-                      Creá tu cuenta con el email invitado para acceder al equipo.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <header className="mt-10 anim-rise">
               <Eyebrow>{isRegistering ? 'Nueva cuenta' : 'Ingreso'}</Eyebrow>

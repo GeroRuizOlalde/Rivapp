@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Crown, Edit, Info, Mail, Plus, Trash2, User, Users } from 'lucide-react';
+import { Crown, Edit, Info, Plus, Trash2, User, Users } from 'lucide-react';
 import { supabase } from '../../supabase/client';
 import { useToast } from '../../components/shared/toastContext';
 import { useConfirm } from '../../components/shared/confirmContext';
@@ -26,12 +26,9 @@ const ROLE_LABEL = {
 export default function TeamTab({
   storeId,
   branches = [],
-  teamInvites,
   onOpenRolesModal,
   onOpenInviteModal,
-  getBranchName,
-  onDeleteInvite,
-  refreshInvites,
+  refreshSignal,
 }) {
   const toast = useToast();
   const confirm = useConfirm();
@@ -61,7 +58,7 @@ export default function TeamTab({
   useEffect(() => {
     fetchMembers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId]);
+  }, [storeId, refreshSignal]);
 
   const handleRemove = async (member) => {
     const ok = await confirm({
@@ -81,8 +78,6 @@ export default function TeamTab({
     toast.success('Miembro removido');
     fetchMembers();
   };
-
-  const pendingInvites = (teamInvites || []).filter((i) => i.status === 'pending');
 
   return (
     <div className="mx-auto max-w-5xl pb-20 anim-rise">
@@ -195,63 +190,6 @@ export default function TeamTab({
         )}
       </section>
 
-      {/* INVITACIONES PENDIENTES */}
-      <section className="mt-12">
-        <div className="mb-4 flex items-center justify-between">
-          <Eyebrow>Invitaciones pendientes</Eyebrow>
-          {pendingInvites.length > 0 && (
-            <span className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">
-              {pendingInvites.length}
-            </span>
-          )}
-        </div>
-
-        {pendingInvites.length === 0 ? (
-          <div className="rounded-[var(--radius-md)] border border-dashed border-rule p-6 text-center">
-            <p className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">
-              Sin invitaciones pendientes
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {pendingInvites.map((invite) => (
-              <div
-                key={invite.id}
-                className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-rule-strong bg-ink-2 p-4 md:flex-row md:items-center md:justify-between md:p-5"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-acid/30 bg-acid/10 text-acid">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="display truncate text-base text-text">{invite.email}</p>
-                    <p className="mono mt-0.5 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
-                      {invite.branch_id
-                        ? `Sucursal: ${getBranchName(invite.branch_id)}`
-                        : 'Acceso global'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`mono rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] ${ROLE_TONE[invite.role] || ROLE_TONE.staff}`}
-                  >
-                    {ROLE_LABEL[invite.role] || invite.role}
-                  </span>
-                  <button
-                    onClick={() => onDeleteInvite(invite.id)}
-                    className="rounded-[var(--radius-sm)] border border-signal/30 bg-signal/10 p-2 text-signal hover:bg-signal hover:text-white"
-                    aria-label="Revocar"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
       {editing && (
         <EditMemberModal
           member={editing}
@@ -261,7 +199,6 @@ export default function TeamTab({
           onSaved={() => {
             setEditing(null);
             fetchMembers();
-            if (refreshInvites) refreshInvites();
           }}
         />
       )}

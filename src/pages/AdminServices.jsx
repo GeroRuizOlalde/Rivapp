@@ -141,10 +141,10 @@ export default function AdminServices() {
   // Flags de qué credenciales MP están cargadas (sin exponer valores).
   const [mpStatus, setMpStatus] = useState({ mp_access_token: false, mp_public_key: false });
   // Gestión de USUARIOS DEL PANEL (distinto de "Equipo" que son los profesionales)
-  const [teamInvites, setTeamInvites] = useState([]);
   const [showTeamInviteModal, setShowTeamInviteModal] = useState(false);
   const [showRolesInfoModal, setShowRolesInfoModal] = useState(false);
-  const [newMember, setNewMember] = useState({ email: '', role: 'staff', branch_id: '' });
+  const [newMember, setNewMember] = useState({ email: '', role: 'staff', branch_id: '', password: '' });
+  const [teamRefreshSignal, setTeamRefreshSignal] = useState(0);
   const [services, setServices] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -528,46 +528,19 @@ export default function AdminServices() {
   };
 
   // === Gestión de usuarios del panel ===
-  const fetchTeamInvites = async () => {
-    if (!store?.id) return;
-    const { data } = await supabase
-      .from('team_invitations')
-      .select('*')
-      .eq('store_id', store.id)
-      .order('created_at', { ascending: false });
-    if (data) setTeamInvites(data);
-  };
-
-  useEffect(() => {
-    if (store?.id) fetchTeamInvites();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store?.id]);
-
-  const handleInviteMember = async (e) => {
-    e.preventDefault();
-    if (!newMember.email) return toast.error('Falta el email');
+  const handleCreateMember = async ({ email, role, branch_id, password }) => {
+    if (!email) {
+      toast.error('Falta el email');
+      return null;
+    }
     try {
-      const payload = {
-        store_id: store.id,
-        email: newMember.email,
-        role: newMember.role,
-        branch_id: newMember.role === 'manager' || newMember.role === 'staff' ? newMember.branch_id || null : null,
-        status: 'pending',
-      };
-      const { data: dbData, error } = await supabase
-        .from('team_invitations')
-        .insert([payload])
-        .select()
-        .single();
-      if (error) throw error;
-      const inviteLink = `${window.location.origin}/login?invite=${dbData.id}`;
-      const invokeRes = await supabase.functions.invoke('invite-user', {
+      const invokeRes = await supabase.functions.invoke('create-team-member', {
         body: {
-          email: newMember.email,
-          role: newMember.role,
-          store_name: store.name,
-          branch_name: null,
-          invite_link: inviteLink,
+          store_id: store.id,
+          email,
+          role,
+          branch_id: branch_id || null,
+          password,
         },
       });
       let fnErrMsg = null;
@@ -582,31 +555,17 @@ export default function AdminServices() {
         fnErrMsg = invokeRes.data.error;
       }
       if (fnErrMsg) {
-        logger.error('Error enviando mail:', fnErrMsg);
-        toast.warning(
-          `Invitación guardada en el sistema. El correo no se pudo enviar: ${fnErrMsg}`,
-          { duration: 8000 }
-        );
-      } else {
-        toast.success(`Invitación enviada a ${newMember.email}`);
+        toast.error(fnErrMsg);
+        return null;
       }
-      setShowTeamInviteModal(false);
-      setNewMember({ email: '', role: 'staff', branch_id: '' });
-      fetchTeamInvites();
+      toast.success('Miembro agregado');
+      setNewMember({ email: '', role: 'staff', branch_id: '', password: '' });
+      setTeamRefreshSignal((n) => n + 1);
+      return invokeRes.data;
     } catch (err) {
       toast.error('Error: ' + err.message);
+      return null;
     }
-  };
-
-  const handleDeleteInvite = async (id) => {
-    const ok = await confirm({
-      title: '¿Eliminar invitación?',
-      confirmLabel: 'Eliminar',
-      danger: true,
-    });
-    if (!ok) return;
-    await supabase.from('team_invitations').delete().eq('id', id);
-    fetchTeamInvites();
   };
 
   const handleSaveProfile = async (e) => {
@@ -1878,12 +1837,9 @@ export default function AdminServices() {
           <TeamTab
             storeId={store?.id}
             branches={[]}
-            teamInvites={teamInvites}
             onOpenRolesModal={() => setShowRolesInfoModal(true)}
             onOpenInviteModal={() => setShowTeamInviteModal(true)}
-            getBranchName={() => null}
-            onDeleteInvite={handleDeleteInvite}
-            refreshInvites={fetchTeamInvites}
+            refreshSignal={teamRefreshSignal}
           />
         )}
 
@@ -2234,7 +2190,7 @@ export default function AdminServices() {
           newMember={newMember}
           setNewMember={setNewMember}
           branches={[]}
-          onSubmit={handleInviteMember}
+          onSubmit={handleCreateMember}
           onClose={() => setShowTeamInviteModal(false)}
         />
       )}

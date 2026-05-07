@@ -78,11 +78,11 @@ verify_jwt = true
 import_map = "./functions/remove-team-member/deno.json"
 entrypoint = "./functions/remove-team-member/index.ts"
 
-[functions.accept-invitation]
+[functions.create-team-member]
 enabled = true
-verify_jwt = false
-import_map = "./functions/accept-invitation/deno.json"
-entrypoint = "./functions/accept-invitation/index.ts"
+verify_jwt = true
+import_map = "./functions/create-team-member/deno.json"
+entrypoint = "./functions/create-team-member/index.ts"
 
 [functions.create-store-owner]
 enabled = true

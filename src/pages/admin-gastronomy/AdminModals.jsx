@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X, MapPin, Mail, Bike, Layers, Plus, Zap, TrendingUp, CloudUpload, Loader2,
-  Crown, Store, User,
+  Crown, Store, User, RefreshCw, Eye, EyeOff, Copy, Check,
 } from 'lucide-react';
 import Button from '../../components/shared/ui/Button';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
@@ -136,14 +136,128 @@ export function BranchModal({ branchForm, setBranchForm, editingBranch, onSave, 
   );
 }
 
+function generatePassword(length = 12) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const arr = new Uint32Array(length);
+  if (typeof window !== 'undefined' && window.crypto) {
+    window.crypto.getRandomValues(arr);
+  } else {
+    for (let i = 0; i < length; i++) arr[i] = Math.floor(Math.random() * 0xffffffff);
+  }
+  let out = '';
+  for (let i = 0; i < length; i++) out += chars[arr[i] % chars.length];
+  return out;
+}
+
+// Modal de "Agregar miembro". Maneja el form Y el resultado (credenciales para
+// copiar) sin hacer reload del modal.
+//   onSubmit(memberData) → debe devolver { success, was_new_user, temp_password, email_sent, email_error } o null.
 export function TeamModal({ newMember, setNewMember, branches, onSubmit, onClose }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(null); // 'email' | 'pwd' | null
+
+  // Inicializar password al abrir
+  useEffect(() => {
+    if (!newMember.password) {
+      setNewMember((prev) => ({ ...prev, password: generatePassword() }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const regenerate = () => setNewMember({ ...newMember, password: generatePassword() });
+
+  const handleCopy = (text, key) => {
+    navigator.clipboard?.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 1800);
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await onSubmit({
+        email: newMember.email,
+        role: newMember.role,
+        branch_id: newMember.branch_id || null,
+        password: newMember.password,
+      });
+      if (res) setResult(res);
+      else onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // VISTA: resultado con credenciales
+  if (result) {
+    const { was_new_user, email, temp_password, email_sent, email_error } = result;
+    return (
+      <ModalShell eyebrow="Listo" title="Miembro agregado" onClose={onClose}>
+        <div className="space-y-5">
+          {was_new_user ? (
+            <>
+              <p className="text-sm text-text-muted">
+                Cuenta nueva creada. {email_sent
+                  ? 'Le enviamos un email con las credenciales.'
+                  : 'No se pudo enviar el email — copialas y mandáselas vos.'}
+                {email_error && ` (${email_error})`}
+              </p>
+              <div className="space-y-3 rounded-[var(--radius-md)] border border-acid/30 bg-acid/[0.05] p-4">
+                <div>
+                  <p className="mono mb-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">Email</p>
+                  <div className="flex items-center justify-between gap-2 rounded bg-ink-3 p-2">
+                    <code className="mono truncate text-sm text-text">{email}</code>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(email, 'email')}
+                      className="shrink-0 rounded border border-rule p-1.5 text-text-muted hover:border-text hover:text-text"
+                      aria-label="Copiar email"
+                    >
+                      {copied === 'email' ? <Check className="h-3.5 w-3.5 text-acid" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <p className="mono mb-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                    Contraseña temporal
+                  </p>
+                  <div className="flex items-center justify-between gap-2 rounded bg-ink-3 p-2">
+                    <code className="mono truncate text-sm text-text">{temp_password}</code>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(temp_password, 'pwd')}
+                      className="shrink-0 rounded border border-rule p-1.5 text-text-muted hover:border-text hover:text-text"
+                      aria-label="Copiar contraseña"
+                    >
+                      {copied === 'pwd' ? <Check className="h-3.5 w-3.5 text-acid" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p className="mono text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                Esta contraseña no se va a volver a mostrar. Guardala antes de cerrar.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-text-muted">
+              <strong className="text-text">{email}</strong> ya tenía cuenta. Le agregamos el acceso a esta tienda con su contraseña existente.
+            </p>
+          )}
+          <Button onClick={onClose} variant="acid" size="lg" className="w-full">
+            Listo
+          </Button>
+        </div>
+      </ModalShell>
+    );
+  }
+
+  // VISTA: form
   return (
-    <ModalShell
-      eyebrow="Equipo"
-      title="Invitar miembro"
-      onClose={onClose}
-    >
-      <form onSubmit={onSubmit} className="space-y-4">
+    <ModalShell eyebrow="Equipo" title="Agregar miembro" onClose={onClose}>
+      <form onSubmit={handleFormSubmit} className="space-y-4">
         <AdminInput
           type="email"
           label="Email"
@@ -182,7 +296,7 @@ export function TeamModal({ newMember, setNewMember, branches, onSubmit, onClose
             })}
           </div>
         </div>
-        {(newMember.role === 'manager' || newMember.role === 'staff') && (
+        {branches?.length > 0 && (newMember.role === 'manager' || newMember.role === 'staff') && (
           <AdminSelect
             label="Sucursal asignada"
             value={newMember.branch_id}
@@ -197,11 +311,53 @@ export function TeamModal({ newMember, setNewMember, branches, onSubmit, onClose
             ))}
           </AdminSelect>
         )}
+
+        <div>
+          <label className="eyebrow mb-2 flex items-center justify-between">
+            <span>Contraseña temporal</span>
+            <button
+              type="button"
+              onClick={regenerate}
+              className="mono inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] text-text-muted hover:text-text"
+            >
+              <RefreshCw className="h-3 w-3" /> Regenerar
+            </button>
+          </label>
+          <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={newMember.password || ''}
+              onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
+              className="mono flex-1 bg-transparent text-sm text-text outline-none"
+              required
+              minLength={6}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className="shrink-0 text-text-muted hover:text-text"
+              aria-label={showPassword ? 'Ocultar' : 'Mostrar'}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className="mono mt-2 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+            La persona la podrá cambiar después desde "olvidé mi contraseña".
+          </p>
+        </div>
+
         <button
           type="submit"
-          className="flex w-full items-center justify-center rounded-[var(--radius-md)] bg-acid py-3 text-sm font-semibold text-ink hover:brightness-110"
+          disabled={submitting}
+          className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-acid py-3 text-sm font-semibold text-ink hover:brightness-110 disabled:opacity-60"
         >
-          Enviar invitación
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Creando…
+            </>
+          ) : (
+            'Crear miembro'
+          )}
         </button>
       </form>
     </ModalShell>

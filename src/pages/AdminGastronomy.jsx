@@ -75,9 +75,9 @@ export default function AdminGastronomy() {
   const [editingBranch, setEditingBranch] = useState(null);
   const [branchForm, setBranchForm] = useState({ name: '', address: '', phone: '', lat: '', lng: '' });
 
-  const [teamInvites, setTeamInvites] = useState([]);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showRolesModal, setShowRolesModal] = useState(false);
+  const [teamRefreshSignal, setTeamRefreshSignal] = useState(0);
   const [newMember, setNewMember] = useState({ email: '', role: 'staff', branch_id: '' });
 
   const [orders, setOrders] = useState([]);
@@ -299,14 +299,6 @@ export default function AdminGastronomy() {
       .limit(200);
     if (data) setCustomers(data);
   }, [config?.id]);
-  const fetchTeamInvites = useCallback(async () => {
-    const { data } = await supabase
-      .from('team_invitations')
-      .select('*')
-      .eq('store_id', config.id)
-      .order('created_at', { ascending: false });
-    if (data) setTeamInvites(data);
-  }, [config?.id]);
 
   const dismissMessage = (id) => {
     const updated = [...dismissedMessages, id];
@@ -373,7 +365,6 @@ export default function AdminGastronomy() {
     fetchGlobalNotifications();
     fetchCRMData();
     fetchBranches();
-    fetchTeamInvites();
     setSettingsForm({
       store_name: config.name,
       color_accent: config.color_accent,
@@ -415,7 +406,6 @@ export default function AdminGastronomy() {
     fetchMenu,
     fetchReviews,
     fetchRiders,
-    fetchTeamInvites,
     session,
   ]);
 
@@ -1007,37 +997,21 @@ export default function AdminGastronomy() {
     }
   };
 
-  const handleInviteMember = async (e) => {
-    e.preventDefault();
-    if (!newMember.email) return toast.error('Falta el email');
-    const btn = document.activeElement;
-    const originalText = btn.innerText;
-    btn.innerText = 'Enviando...';
-    btn.disabled = true;
+  // Crea un miembro nuevo directo (sin "aceptación"). Devuelve el resultado
+  // al modal para que muestre las credenciales si se generaron.
+  const handleCreateMember = async ({ email, role, branch_id, password }) => {
+    if (!email) {
+      toast.error('Falta el email');
+      return null;
+    }
     try {
-      const payload = {
-        store_id: config.id,
-        email: newMember.email,
-        role: newMember.role,
-        branch_id:
-          newMember.role === 'manager' || newMember.role === 'staff' ? newMember.branch_id : null,
-        status: 'pending',
-      };
-      const { data: dbData, error } = await supabase
-        .from('team_invitations')
-        .insert([payload])
-        .select()
-        .single();
-      if (error) throw error;
-      const inviteLink = `${window.location.origin}/login?invite=${dbData.id}`;
-      const branchName = newMember.branch_id ? getBranchName(newMember.branch_id) : null;
-      const invokeRes = await supabase.functions.invoke('invite-user', {
+      const invokeRes = await supabase.functions.invoke('create-team-member', {
         body: {
-          email: newMember.email,
-          role: newMember.role,
-          store_name: config.name,
-          branch_name: branchName,
-          invite_link: inviteLink,
+          store_id: config.id,
+          email,
+          role,
+          branch_id: branch_id || null,
+          password,
         },
       });
       let fnErrMsg = null;
@@ -1052,33 +1026,17 @@ export default function AdminGastronomy() {
         fnErrMsg = invokeRes.data.error;
       }
       if (fnErrMsg) {
-        logger.error('Error enviando mail:', fnErrMsg);
-        toast.warning(
-          `Invitación guardada en el sistema. El correo no se pudo enviar: ${fnErrMsg}`,
-          { duration: 8000 }
-        );
-      } else {
-        toast.success(`Invitación enviada a ${newMember.email}`);
+        toast.error(fnErrMsg);
+        return null;
       }
-      setShowTeamModal(false);
-      setNewMember({ email: '', role: 'staff', branch_id: '' });
-      fetchTeamInvites();
+      toast.success('Miembro agregado');
+      setNewMember({ email: '', role: 'staff', branch_id: '', password: '' });
+      setTeamRefreshSignal((n) => n + 1);
+      return invokeRes.data;
     } catch (err) {
       toast.error('Error: ' + err.message);
-    } finally {
-      btn.innerText = originalText;
-      btn.disabled = false;
+      return null;
     }
-  };
-  const handleDeleteInvite = async (id) => {
-    const ok = await confirm({
-      title: '¿Eliminar invitación?',
-      confirmLabel: 'Eliminar',
-      danger: true,
-    });
-    if (!ok) return;
-    await supabase.from('team_invitations').delete().eq('id', id);
-    fetchTeamInvites();
   };
 
   if (loadingSession)
@@ -1387,12 +1345,9 @@ export default function AdminGastronomy() {
           <TeamTab
             storeId={config?.id}
             branches={branches}
-            teamInvites={teamInvites}
             onOpenRolesModal={() => setShowRolesModal(true)}
             onOpenInviteModal={() => setShowTeamModal(true)}
-            getBranchName={getBranchName}
-            onDeleteInvite={handleDeleteInvite}
-            refreshInvites={fetchTeamInvites}
+            refreshSignal={teamRefreshSignal}
           />
         )}
         {activeTab === 'menu' && (
@@ -1503,7 +1458,7 @@ export default function AdminGastronomy() {
           newMember={newMember}
           setNewMember={setNewMember}
           branches={branches}
-          onSubmit={handleInviteMember}
+          onSubmit={handleCreateMember}
           onClose={() => setShowTeamModal(false)}
         />
       )}
