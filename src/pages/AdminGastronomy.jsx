@@ -1031,7 +1031,7 @@ export default function AdminGastronomy() {
       if (error) throw error;
       const inviteLink = `${window.location.origin}/login?invite=${dbData.id}`;
       const branchName = newMember.branch_id ? getBranchName(newMember.branch_id) : null;
-      const { error: fnError } = await supabase.functions.invoke('invite-user', {
+      const invokeRes = await supabase.functions.invoke('invite-user', {
         body: {
           email: newMember.email,
           role: newMember.role,
@@ -1040,9 +1040,23 @@ export default function AdminGastronomy() {
           invite_link: inviteLink,
         },
       });
-      if (fnError) {
-        logger.error('Error enviando mail:', fnError);
-        toast.warning('Invitación guardada, pero falló el envío del correo');
+      let fnErrMsg = null;
+      if (invokeRes.error) {
+        try {
+          const ctx = await invokeRes.error.context?.json?.();
+          fnErrMsg = ctx?.error || invokeRes.error.message;
+        } catch {
+          fnErrMsg = invokeRes.error.message;
+        }
+      } else if (invokeRes.data?.error) {
+        fnErrMsg = invokeRes.data.error;
+      }
+      if (fnErrMsg) {
+        logger.error('Error enviando mail:', fnErrMsg);
+        toast.warning(
+          `Invitación guardada en el sistema. El correo no se pudo enviar: ${fnErrMsg}`,
+          { duration: 8000 }
+        );
       } else {
         toast.success(`Invitación enviada a ${newMember.email}`);
       }
