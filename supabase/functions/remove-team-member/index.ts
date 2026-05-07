@@ -36,7 +36,14 @@ serve(async (req) => {
     if (!store_id) return json({ error: 'Falta store_id' }, 400);
     if (!user_id) return json({ error: 'Falta user_id' }, 400);
 
-    // No permitir sacar al owner
+    // === AUTHZ ===
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) return json({ error: 'Falta autenticación' }, 401);
+    const { data: callerData, error: callerErr } = await supabase.auth.getUser(token);
+    if (callerErr || !callerData?.user?.id) return json({ error: 'Sesión inválida' }, 401);
+    const callerId = callerData.user.id;
+
     const { data: storeRow } = await supabase
       .from('stores')
       .select('owner_id')
@@ -44,6 +51,61 @@ serve(async (req) => {
       .maybeSingle();
     if (storeRow?.owner_id === user_id) {
       return json({ error: 'No se puede quitar al dueño de su propia tienda' }, 400);
+    }
+
+    // Resolver rol del caller
+    let callerRole: string | null = null;
+    let callerBranchId: string | null = null;
+    if (storeRow?.owner_id === callerId) {
+      callerRole = 'owner';
+    } else {
+      const { data: storeMembership } = await supabase
+        .from('store_memberships')
+        .select('role')
+        .eq('store_id', store_id)
+        .eq('user_id', callerId)
+        .maybeSingle();
+      if (storeMembership) {
+        callerRole = storeMembership.role;
+      } else {
+        const { data: storeBranches } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('store_id', store_id);
+        const branchIds = (storeBranches || []).map((b) => b.id);
+        if (branchIds.length > 0) {
+          const { data: branchMembership } = await supabase
+            .from('branch_memberships')
+            .select('role, branch_id')
+            .in('branch_id', branchIds)
+            .eq('user_id', callerId)
+            .maybeSingle();
+          if (branchMembership) {
+            callerRole = branchMembership.role;
+            callerBranchId = branchMembership.branch_id;
+          }
+        }
+      }
+    }
+
+    if (!callerRole || !['owner', 'admin', 'manager'].includes(callerRole)) {
+      return json({ error: 'No tenés permiso para quitar miembros' }, 403);
+    }
+
+    // Manager: solo quita miembros que son de SU sucursal
+    if (callerRole === 'manager') {
+      if (!callerBranchId) {
+        return json({ error: 'Tu cuenta no tiene sucursal asignada' }, 403);
+      }
+      const { data: targetBranchMember } = await supabase
+        .from('branch_memberships')
+        .select('branch_id')
+        .eq('user_id', user_id)
+        .eq('branch_id', callerBranchId)
+        .maybeSingle();
+      if (!targetBranchMember) {
+        return json({ error: 'Solo podés quitar miembros de tu propia sucursal' }, 403);
+      }
     }
 
     // Borrar store-level memberships

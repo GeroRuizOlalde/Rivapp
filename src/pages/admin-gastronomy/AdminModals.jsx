@@ -6,6 +6,7 @@ import {
 import Button from '../../components/shared/ui/Button';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
 import Rule from '../../components/shared/ui/Rule';
+import { ASSIGNABLE_ROLES, MANAGER_ASSIGNABLE_ROLES, getRoleLabel } from '../../config/roles';
 
 function ModalShell({ title, subtitle, eyebrow, onClose, maxWidth = 'max-w-md', children }) {
   // Lock body scroll mientras el modal está abierto.
@@ -152,17 +153,44 @@ function generatePassword(length = 12) {
 // Modal de "Agregar miembro". Maneja el form Y el resultado (credenciales para
 // copiar) sin hacer reload del modal.
 //   onSubmit(memberData) → debe devolver { success, was_new_user, temp_password, email_sent, email_error } o null.
-export function TeamModal({ newMember, setNewMember, branches, onSubmit, onClose }) {
+//   currentRole / currentBranchId — si quien crea es 'manager', se restringe
+//   el scope: solo puede crear staff/rider en SU misma sucursal.
+export function TeamModal({
+  newMember,
+  setNewMember,
+  branches,
+  businessType = 'gastronomia',
+  currentRole = null,
+  currentBranchId = null,
+  onSubmit,
+  onClose,
+}) {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(null); // 'email' | 'pwd' | null
 
-  // Inicializar password al abrir
+  const isRestrictedManager = currentRole === 'manager';
+
+  // Roles que el caller puede asignar (labels según rubro)
+  const allowedRoles = (
+    isRestrictedManager
+      ? MANAGER_ASSIGNABLE_ROLES(businessType)
+      : ASSIGNABLE_ROLES(businessType)
+  ).map((r) => ({ key: r.id, label: r.label, tone: r.tone }));
+
+  // Inicializar password + scope al abrir
   useEffect(() => {
-    if (!newMember.password) {
-      setNewMember((prev) => ({ ...prev, password: generatePassword() }));
-    }
+    setNewMember((prev) => {
+      const next = { ...prev };
+      if (!next.password) next.password = generatePassword();
+      // Si soy manager, forzar branch a la mía y rol a uno permitido.
+      if (isRestrictedManager) {
+        next.branch_id = currentBranchId || '';
+        if (!allowedRoles.find((r) => r.key === next.role)) next.role = 'staff';
+      }
+      return next;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -268,12 +296,8 @@ export function TeamModal({ newMember, setNewMember, branches, onSubmit, onClose
         />
         <div>
           <label className="eyebrow mb-2 block">Rol</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { key: 'manager', label: 'Gerente', tone: 'acid' },
-              { key: 'staff', label: 'Cajero', tone: 'ml' },
-              { key: 'admin', label: 'Admin', tone: 'signal' },
-            ].map((r) => {
+          <div className={`grid gap-2 ${allowedRoles.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            {allowedRoles.map((r) => {
               const active = newMember.role === r.key;
               return (
                 <button
@@ -295,22 +319,31 @@ export function TeamModal({ newMember, setNewMember, branches, onSubmit, onClose
               );
             })}
           </div>
+          {isRestrictedManager && (
+            <p className="mono mt-2 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+              Como gerente, solo podés crear cajeros o riders para tu sucursal.
+            </p>
+          )}
         </div>
-        {branches?.length > 0 && (newMember.role === 'manager' || newMember.role === 'staff') && (
-          <AdminSelect
-            label="Sucursal asignada"
-            value={newMember.branch_id}
-            onChange={(e) => setNewMember({ ...newMember, branch_id: e.target.value })}
-            required
-          >
-            <option value="">Elegí una sucursal…</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </AdminSelect>
-        )}
+        {branches?.length > 0 &&
+          (newMember.role === 'manager' || newMember.role === 'staff' || newMember.role === 'rider') && (
+            <AdminSelect
+              label="Sucursal asignada"
+              value={newMember.branch_id}
+              onChange={(e) => setNewMember({ ...newMember, branch_id: e.target.value })}
+              required
+              disabled={isRestrictedManager}
+            >
+              <option value="">Elegí una sucursal…</option>
+              {branches
+                .filter((b) => (isRestrictedManager ? b.id === currentBranchId : true))
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+            </AdminSelect>
+          )}
 
         <div>
           <label className="eyebrow mb-2 flex items-center justify-between">
@@ -364,7 +397,54 @@ export function TeamModal({ newMember, setNewMember, branches, onSubmit, onClose
   );
 }
 
-export function RolesModal({ onClose }) {
+export function RolesModal({ onClose, businessType = 'gastronomia' }) {
+  const isGastro = (businessType || '').toLowerCase().includes('gastr')
+    || (businessType || '').toLowerCase().includes('food')
+    || (businessType || '').toLowerCase().includes('restaurant');
+
+  const roles = [
+    {
+      icon: Crown,
+      title: `${getRoleLabel('admin', businessType)} (Dueño / Admin)`,
+      tone: 'signal',
+      desc: 'Acceso total a todo el negocio.',
+      bullets: [
+        'Ve y gestiona todas las sucursales',
+        'Acceso a facturación y suscripción',
+        'Crear/borrar miembros y configurar la marca',
+        isGastro ? 'Edita menú, precios y todo el catálogo' : 'Edita servicios, precios y horarios',
+      ],
+    },
+    {
+      icon: Store,
+      title: `${getRoleLabel('manager', businessType)}`,
+      tone: 'acid',
+      desc: 'Líder de una sucursal específica.',
+      bullets: [
+        'Solo ve los datos de su sucursal asignada',
+        isGastro ? 'Puede editar menú y precios' : 'Puede editar servicios y agenda',
+        isGastro ? 'Gestiona staff y riders del local' : 'Gestiona staff de su local',
+        'Ve métricas de venta locales',
+      ],
+    },
+    {
+      icon: User,
+      title: getRoleLabel('staff', businessType),
+      tone: 'ml',
+      desc: 'Operativo para el día a día.',
+      bullets: isGastro
+        ? [
+            'Recibe y gestiona pedidos (Confirmar, Listo, Entregar)',
+            'Puede abrir/cerrar la sucursal',
+          ]
+        : [
+            'Confirma o rechaza turnos solicitados',
+            'Reagenda y cancela turnos',
+            'Atiende a clientes en mostrador',
+          ],
+    },
+  ];
+
   return (
     <ModalShell
       eyebrow="Referencia"
@@ -374,42 +454,7 @@ export function RolesModal({ onClose }) {
       maxWidth="max-w-2xl"
     >
       <div className="grid gap-3">
-        {[
-          {
-            icon: Crown,
-            title: 'Admin (Dueño)',
-            tone: 'signal',
-            desc: 'Acceso total a todo el negocio.',
-            bullets: [
-              'Ve y gestiona todas las sucursales',
-              'Acceso a facturación y suscripción',
-              'Crear/borrar productos y empleados',
-              'Configuración global de la marca',
-            ],
-          },
-          {
-            icon: Store,
-            title: 'Gerente (Manager)',
-            tone: 'acid',
-            desc: 'Líder de una sucursal específica.',
-            bullets: [
-              'Solo ve los datos de su sucursal asignada',
-              'Puede editar menú y precios',
-              'Gestiona los riders del local',
-              'Ve métricas de venta locales',
-            ],
-          },
-          {
-            icon: User,
-            title: 'Cajero (Staff)',
-            tone: 'ml',
-            desc: 'Operativo para el día a día.',
-            bullets: [
-              'Recibe y gestiona pedidos (Confirmar, Listo, Entregar)',
-              'Puede abrir/cerrar la sucursal',
-            ],
-          },
-        ].map((role) => {
+        {roles.map((role) => {
           const Icon = role.icon;
           return (
             <div

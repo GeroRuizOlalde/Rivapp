@@ -83,10 +83,74 @@ serve(async (req) => {
     // Validar tienda existe
     const { data: store } = await supabase
       .from('stores')
-      .select('id, name, slug')
+      .select('id, name, slug, owner_id')
       .eq('id', store_id)
       .maybeSingle();
     if (!store) return json({ error: 'Tienda no encontrada' }, 404);
+
+    // === AUTHZ: validar permisos del caller ===
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) return json({ error: 'Falta autenticación' }, 401);
+
+    const { data: callerData, error: callerErr } = await supabase.auth.getUser(token);
+    if (callerErr || !callerData?.user?.id) {
+      return json({ error: 'Sesión inválida' }, 401);
+    }
+    const callerId = callerData.user.id;
+
+    // Resolver el rol del caller en esta tienda
+    let callerRole: string | null = null;
+    let callerBranchId: string | null = null;
+    if (store.owner_id === callerId) {
+      callerRole = 'owner';
+    } else {
+      const { data: storeMembership } = await supabase
+        .from('store_memberships')
+        .select('role')
+        .eq('store_id', store_id)
+        .eq('user_id', callerId)
+        .maybeSingle();
+      if (storeMembership) {
+        callerRole = storeMembership.role;
+      } else {
+        const { data: storeBranches } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('store_id', store_id);
+        const branchIds = (storeBranches || []).map((b) => b.id);
+        if (branchIds.length > 0) {
+          const { data: branchMembership } = await supabase
+            .from('branch_memberships')
+            .select('role, branch_id')
+            .in('branch_id', branchIds)
+            .eq('user_id', callerId)
+            .maybeSingle();
+          if (branchMembership) {
+            callerRole = branchMembership.role;
+            callerBranchId = branchMembership.branch_id;
+          }
+        }
+      }
+    }
+
+    // Solo owner / admin / manager pueden crear miembros
+    if (!callerRole || !['owner', 'admin', 'manager'].includes(callerRole)) {
+      return json({ error: 'No tenés permiso para crear miembros' }, 403);
+    }
+
+    // Reglas para manager: solo crear staff/rider, solo en SU sucursal
+    if (callerRole === 'manager') {
+      if (!['staff', 'rider'].includes(role)) {
+        return json({ error: 'Como gerente solo podés crear cajeros o riders' }, 403);
+      }
+      if (!callerBranchId) {
+        return json({ error: 'Tu cuenta no tiene sucursal asignada' }, 403);
+      }
+      if (!branch_id || branch_id !== callerBranchId) {
+        return json({ error: 'Solo podés crear miembros en tu propia sucursal' }, 403);
+      }
+    }
 
     // Si se pidió scope branch, validar que la branch sea de esa tienda
     if (branch_id) {
@@ -128,7 +192,7 @@ serve(async (req) => {
     if (!user?.id) return json({ error: 'No se pudo identificar/crear el usuario' }, 500);
 
     // No permitir que el dueño se agregue como miembro de su propia tienda
-    if (user.id === (await supabase.from('stores').select('owner_id').eq('id', store_id).maybeSingle()).data?.owner_id) {
+    if (user.id === store.owner_id) {
       return json({ error: 'Esa cuenta ya es la dueña de esta tienda' }, 400);
     }
 

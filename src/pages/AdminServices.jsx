@@ -1837,6 +1837,7 @@ export default function AdminServices() {
           <TeamTab
             storeId={store?.id}
             branches={[]}
+            businessType={store?.business_type || 'turnos'}
             onOpenRolesModal={() => setShowRolesInfoModal(true)}
             onOpenInviteModal={() => setShowTeamInviteModal(true)}
             refreshSignal={teamRefreshSignal}
@@ -2190,11 +2191,17 @@ export default function AdminServices() {
           newMember={newMember}
           setNewMember={setNewMember}
           branches={[]}
+          businessType={store?.business_type || 'turnos'}
           onSubmit={handleCreateMember}
           onClose={() => setShowTeamInviteModal(false)}
         />
       )}
-      {showRolesInfoModal && <RolesModal onClose={() => setShowRolesInfoModal(false)} />}
+      {showRolesInfoModal && (
+        <RolesModal
+          onClose={() => setShowRolesInfoModal(false)}
+          businessType={store?.business_type || 'turnos'}
+        />
+      )}
 
       {showServiceModal && (
         <Modal onClose={() => setShowServiceModal(false)} title={editingService ? 'Editar servicio' : 'Nuevo servicio'}>

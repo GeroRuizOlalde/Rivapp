@@ -45,7 +45,14 @@ serve(async (req) => {
       return json({ error: 'Falta new_branch_id para scope branch' }, 400);
     }
 
-    // No permitir tocar al owner desde acá
+    // === AUTHZ ===
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) return json({ error: 'Falta autenticación' }, 401);
+    const { data: callerData, error: callerErr } = await supabase.auth.getUser(token);
+    if (callerErr || !callerData?.user?.id) return json({ error: 'Sesión inválida' }, 401);
+    const callerId = callerData.user.id;
+
     const { data: storeRow } = await supabase
       .from('stores')
       .select('owner_id')
@@ -53,6 +60,55 @@ serve(async (req) => {
       .maybeSingle();
     if (storeRow?.owner_id === user_id) {
       return json({ error: 'El dueño no se puede editar desde acá' }, 400);
+    }
+
+    // Resolver rol del caller en esta tienda
+    let callerRole: string | null = null;
+    let callerBranchId: string | null = null;
+    if (storeRow?.owner_id === callerId) {
+      callerRole = 'owner';
+    } else {
+      const { data: storeMembership } = await supabase
+        .from('store_memberships')
+        .select('role')
+        .eq('store_id', store_id)
+        .eq('user_id', callerId)
+        .maybeSingle();
+      if (storeMembership) {
+        callerRole = storeMembership.role;
+      } else {
+        const { data: storeBranches } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('store_id', store_id);
+        const branchIds = (storeBranches || []).map((b) => b.id);
+        if (branchIds.length > 0) {
+          const { data: branchMembership } = await supabase
+            .from('branch_memberships')
+            .select('role, branch_id')
+            .in('branch_id', branchIds)
+            .eq('user_id', callerId)
+            .maybeSingle();
+          if (branchMembership) {
+            callerRole = branchMembership.role;
+            callerBranchId = branchMembership.branch_id;
+          }
+        }
+      }
+    }
+
+    if (!callerRole || !['owner', 'admin', 'manager'].includes(callerRole)) {
+      return json({ error: 'No tenés permiso para editar miembros' }, 403);
+    }
+
+    // Manager: solo edita staff/rider de SU sucursal
+    if (callerRole === 'manager') {
+      if (!['staff', 'rider'].includes(new_role)) {
+        return json({ error: 'Como gerente solo podés asignar staff o rider' }, 403);
+      }
+      if (new_scope !== 'branch' || new_branch_id !== callerBranchId) {
+        return json({ error: 'Solo podés modificar miembros de tu propia sucursal' }, 403);
+      }
     }
 
     // Si scope='branch', validar que la branch sea de esta tienda

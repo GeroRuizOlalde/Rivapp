@@ -39,7 +39,7 @@ import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
 
 export default function AdminGastronomy() {
-  const { store: config, refreshStore, role } = useStore();
+  const { store: config, refreshStore, role, selectedBranch } = useStore();
   const { features, canAccessAdmin } = useEntitlements(config);
   const navigate = useNavigate();
   const toast = useToast();
@@ -1345,6 +1345,7 @@ export default function AdminGastronomy() {
           <TeamTab
             storeId={config?.id}
             branches={branches}
+            businessType={config?.business_type || 'gastronomia'}
             onOpenRolesModal={() => setShowRolesModal(true)}
             onOpenInviteModal={() => setShowTeamModal(true)}
             refreshSignal={teamRefreshSignal}
@@ -1458,11 +1459,19 @@ export default function AdminGastronomy() {
           newMember={newMember}
           setNewMember={setNewMember}
           branches={branches}
+          businessType={config?.business_type || 'gastronomia'}
+          currentRole={role}
+          currentBranchId={selectedBranch?.id || null}
           onSubmit={handleCreateMember}
           onClose={() => setShowTeamModal(false)}
         />
       )}
-      {showRolesModal && <RolesModal onClose={() => setShowRolesModal(false)} />}
+      {showRolesModal && (
+        <RolesModal
+          onClose={() => setShowRolesModal(false)}
+          businessType={config?.business_type || 'gastronomia'}
+        />
+      )}
       {showEditOrderModal && editingOrder && (
         <EditOrderModal
           editingOrder={editingOrder}

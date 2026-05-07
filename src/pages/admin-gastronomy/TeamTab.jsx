@@ -6,6 +6,7 @@ import { useConfirm } from '../../components/shared/confirmContext';
 import Button from '../../components/shared/ui/Button';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
 import Rule from '../../components/shared/ui/Rule';
+import { getRoleLabel } from '../../config/roles';
 
 const ROLE_TONE = {
   owner: 'border-acid bg-acid/10 text-acid',
@@ -15,17 +16,10 @@ const ROLE_TONE = {
   rider: 'border-signal bg-signal/10 text-signal-soft',
 };
 
-const ROLE_LABEL = {
-  owner: 'Dueño',
-  admin: 'Admin',
-  manager: 'Gerente',
-  staff: 'Staff',
-  rider: 'Rider',
-};
-
 export default function TeamTab({
   storeId,
   branches = [],
+  businessType = 'gastronomia',
   onOpenRolesModal,
   onOpenInviteModal,
   refreshSignal,
@@ -150,7 +144,7 @@ export default function TeamTab({
                     <span
                       className={`mono rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] ${tone}`}
                     >
-                      {ROLE_LABEL[m.role] || m.role}
+                      {getRoleLabel(m.role, businessType)}
                     </span>
                     {m.editable && (
                       <>
@@ -195,6 +189,7 @@ export default function TeamTab({
           member={editing}
           branches={branches}
           storeId={storeId}
+          businessType={businessType}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -206,7 +201,7 @@ export default function TeamTab({
   );
 }
 
-function EditMemberModal({ member, branches, storeId, onClose, onSaved }) {
+function EditMemberModal({ member, branches, storeId, businessType, onClose, onSaved }) {
   const toast = useToast();
   const [role, setRole] = useState(member.role === 'owner' ? 'manager' : member.role);
   const [scope, setScope] = useState(member.scope);
@@ -268,10 +263,12 @@ function EditMemberModal({ member, branches, storeId, onClose, onSaved }) {
               onChange={(e) => setRole(e.target.value)}
               className="mono w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm uppercase tracking-[0.15em] text-text focus:border-acid focus:outline-none"
             >
-              <option value="admin">Admin (acceso total)</option>
-              <option value="manager">Gerente</option>
-              <option value="staff">Staff</option>
-              <option value="rider">Rider</option>
+              <option value="admin">{getRoleLabel('admin', businessType)} (acceso total)</option>
+              <option value="manager">{getRoleLabel('manager', businessType)}</option>
+              <option value="staff">{getRoleLabel('staff', businessType)}</option>
+              {(businessType || '').toLowerCase().includes('gastr') && (
+                <option value="rider">{getRoleLabel('rider', businessType)}</option>
+              )}
             </select>
           </div>
 
