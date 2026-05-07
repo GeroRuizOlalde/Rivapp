@@ -78,7 +78,12 @@ export const StoreProvider = ({ children }) => {
         setSelectedBranch(initialBranch);
 
         if (currentUser && storeData) {
-          await determineUserRole(currentUser.id, storeData.id, initialBranch?.id);
+          await determineUserRole(
+            currentUser.id,
+            storeData.id,
+            initialBranch?.id,
+            branchesData || []
+          );
         } else {
           setRole(null);
         }
@@ -121,7 +126,7 @@ export const StoreProvider = ({ children }) => {
     };
   }, [store?.id]);
 
-  const determineUserRole = async (userId, storeId, branchId) => {
+  const determineUserRole = async (userId, storeId, branchId, branchesList) => {
     const { data: ownerMembership } = await supabase
       .from('stores')
       .select('owner_id')
@@ -148,6 +153,7 @@ export const StoreProvider = ({ children }) => {
       return;
     }
 
+    // Si hay branch específica seleccionada, intentamos primero por ahí.
     if (branchId) {
       const { data: branchMember } = await supabase
         .from('branch_memberships')
@@ -157,8 +163,36 @@ export const StoreProvider = ({ children }) => {
         .maybeSingle();
 
       if (branchMember) {
-        logger.debug('Usuario es staff de sucursal:', branchMember.role);
+        logger.debug('Usuario es staff de sucursal seleccionada:', branchMember.role);
         setRole(branchMember.role);
+        return;
+      }
+    }
+
+    // Fallback: buscar membership en CUALQUIER sucursal de esta tienda.
+    // Esto cubre el caso típico: el user entra al admin, no eligió sucursal
+    // todavía, y sin embargo es staff/manager de alguna. Sin esto el guard
+    // lo rechaza con role='customer' aunque tenga acceso real.
+    const branchIds = (branchesList || []).map((b) => b.id);
+    if (branchIds.length > 0) {
+      const { data: anyBranchMember } = await supabase
+        .from('branch_memberships')
+        .select('role, branch_id')
+        .in('branch_id', branchIds)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (anyBranchMember) {
+        logger.debug('Usuario es staff de sucursal:', anyBranchMember.role);
+        setRole(anyBranchMember.role);
+        // Autoseleccionar la sucursal del membership si todavía no hay una.
+        const matchingBranch = (branchesList || []).find(
+          (b) => b.id === anyBranchMember.branch_id
+        );
+        if (matchingBranch && !branchId) {
+          setSelectedBranch(matchingBranch);
+          if (storeId) localStorage.setItem(`rivapp_branch_${storeId}`, matchingBranch.id);
+        }
         return;
       }
     }
@@ -178,7 +212,7 @@ export const StoreProvider = ({ children }) => {
     if (branch && store) {
       localStorage.setItem(`rivapp_branch_${store.id}`, branch.id);
       if (user) {
-        await determineUserRole(user.id, store.id, branch.id);
+        await determineUserRole(user.id, store.id, branch.id, branches);
       }
     } else if (store) {
       localStorage.removeItem(`rivapp_branch_${store.id}`);
