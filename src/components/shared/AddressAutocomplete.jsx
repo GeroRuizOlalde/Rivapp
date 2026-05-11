@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useJsApiLoader } from '@react-google-maps/api';
 import { MapPin, Search, Loader2 } from 'lucide-react';
 import { appConfig } from '../../config/appConfig';
-
-const LIBRARIES = ['places'];
+import { useGoogleMaps } from '../../hooks/useGoogleMaps';
 
 /**
  * Input con autocompletado de direcciones de Google Places.
@@ -30,12 +28,7 @@ export default function AddressAutocomplete({
   const autocompleteRef = useRef(null);
   const [text, setText] = useState(value?.address || '');
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: appConfig.googleMapsApiKey,
-    libraries: LIBRARIES,
-    region: country.toUpperCase(),
-    language: 'es',
-  });
+  const { isLoaded, loadError } = useGoogleMaps();
 
   useEffect(() => {
     setText(value?.address || '');

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, Marker } from '@react-google-maps/api';
 import { Loader2, Navigation } from 'lucide-react';
 import { appConfig } from '../../config/appConfig';
+import { useGoogleMaps } from '../../hooks/useGoogleMaps';
 
 /**
  * Mapa interactivo con marker draggable. Reemplaza al picker de Leaflet.
@@ -42,9 +43,7 @@ export default function GoogleLocationPicker({
     position || storeLocation || { lat: -34.6037, lng: -58.3816 } // Buenos Aires fallback
   );
 
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: appConfig.googleMapsApiKey,
-  });
+  const { isLoaded } = useGoogleMaps();
 
   // Sincronizar centro si vino una posición nueva (desde autocomplete por ej).
   // setState dentro del effect es intencional: solo cuando cambia position.

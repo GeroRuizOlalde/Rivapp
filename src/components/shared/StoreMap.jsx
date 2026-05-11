@@ -1,7 +1,8 @@
 import React from 'react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, Marker } from '@react-google-maps/api';
 import { MapPin, Navigation } from 'lucide-react';
 import { appConfig } from '../../config/appConfig';
+import { useGoogleMaps } from '../../hooks/useGoogleMaps';
 
 /**
  * Mapa estático embebido con la ubicación de la tienda/sucursal.
@@ -14,9 +15,7 @@ import { appConfig } from '../../config/appConfig';
  *   - className
  */
 export default function StoreMap({ lat, lng, label = '', height = 240, className = '' }) {
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: appConfig.googleMapsApiKey,
-  });
+  const { isLoaded } = useGoogleMaps();
 
   if (!lat || !lng) return null;
 
