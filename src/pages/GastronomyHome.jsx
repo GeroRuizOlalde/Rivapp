@@ -25,6 +25,8 @@ import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
 import AddressAutocomplete from '../components/shared/AddressAutocomplete';
 import StoreMap from '../components/shared/StoreMap';
+import GoogleLocationPicker from '../components/shared/GoogleLocationPicker';
+import { appConfig } from '../config/appConfig';
 import { getRouteDistanceKm } from '../utils/distance';
 
 let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
@@ -778,11 +780,20 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
                 <p className="mono mb-2 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
                   O ajustá con el mapa
                 </p>
-                <LocationPicker
-                  onLocationSelect={handleLocationSelect}
-                  storeLocation={storeLoc}
-                  initialPosition={exactLocation}
-                />
+                {appConfig.googleMapsApiKey ? (
+                  <GoogleLocationPicker
+                    position={exactLocation}
+                    onChange={(loc) => handleLocationSelect(loc)}
+                    storeLocation={storeLoc}
+                    height={280}
+                  />
+                ) : (
+                  <LocationPicker
+                    onLocationSelect={handleLocationSelect}
+                    storeLocation={storeLoc}
+                    initialPosition={exactLocation}
+                  />
+                )}
               </div>
             )}
           </section>

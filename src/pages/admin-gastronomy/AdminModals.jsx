@@ -7,6 +7,8 @@ import Button from '../../components/shared/ui/Button';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
 import Rule from '../../components/shared/ui/Rule';
 import { ASSIGNABLE_ROLES, MANAGER_ASSIGNABLE_ROLES, getRoleLabel } from '../../config/roles';
+import AddressAutocomplete from '../../components/shared/AddressAutocomplete';
+import StoreMap from '../../components/shared/StoreMap';
 
 function ModalShell({ title, subtitle, eyebrow, onClose, maxWidth = 'max-w-md', children }) {
   // Lock body scroll mientras el modal está abierto.
@@ -97,35 +99,45 @@ export function BranchModal({ branchForm, setBranchForm, editingBranch, onSave, 
           value={branchForm.name}
           onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })}
         />
-        <AdminInput
-          label="Dirección"
-          value={branchForm.address}
-          onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
-        />
+        <div>
+          <label className="eyebrow mb-2 block">Dirección</label>
+          <AddressAutocomplete
+            value={
+              branchForm.address || branchForm.lat
+                ? { address: branchForm.address || '', lat: branchForm.lat, lng: branchForm.lng }
+                : null
+            }
+            onChange={(data) =>
+              setBranchForm({
+                ...branchForm,
+                address: data.address,
+                lat: data.lat,
+                lng: data.lng,
+              })
+            }
+            placeholder="Buscá la dirección…"
+          />
+          <button
+            type="button"
+            onClick={onGetLocation}
+            className="mono mt-2 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ml-soft hover:text-text"
+          >
+            <MapPin className="h-3.5 w-3.5" /> Usar mi ubicación actual
+          </button>
+        </div>
         <AdminInput
           label="Teléfono"
           value={branchForm.phone}
           onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })}
         />
-        <div className="grid grid-cols-2 gap-3">
-          <AdminInput
-            label="Latitud"
-            value={branchForm.lat || ''}
-            onChange={(e) => setBranchForm({ ...branchForm, lat: e.target.value })}
+        {branchForm.lat && branchForm.lng && (
+          <StoreMap
+            lat={Number(branchForm.lat)}
+            lng={Number(branchForm.lng)}
+            label={branchForm.name || 'Sucursal'}
+            height={180}
           />
-          <AdminInput
-            label="Longitud"
-            value={branchForm.lng || ''}
-            onChange={(e) => setBranchForm({ ...branchForm, lng: e.target.value })}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={onGetLocation}
-          className="mono flex w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] py-2 text-[11px] uppercase tracking-[0.22em] text-ml-soft hover:text-text"
-        >
-          <MapPin className="h-3.5 w-3.5" /> Detectar mi ubicación
-        </button>
+        )}
         <button
           type="submit"
           className="flex w-full items-center justify-center rounded-[var(--radius-md)] bg-acid py-3 text-sm font-semibold text-ink hover:brightness-110"
