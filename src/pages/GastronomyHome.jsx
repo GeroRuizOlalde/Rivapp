@@ -23,6 +23,9 @@ import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
+import AddressAutocomplete from '../components/shared/AddressAutocomplete';
+import StoreMap from '../components/shared/StoreMap';
+import { getRouteDistanceKm } from '../utils/distance';
 
 let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
 L.Marker.prototype.options.icon = DefaultIcon;
@@ -31,18 +34,8 @@ const PRECIO_BASE = 500;
 const PRECIO_POR_KM = 300;
 const DEFAULT_COORDS = { lat: -31.546787, lng: -68.56415 };
 
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-};
+// La función Haversine local fue reemplazada por getRouteDistanceKm (utils/distance)
+// que usa Google Distance Matrix con fallback automático a Haversine.
 
 const LocationRequestModal = ({ onEnable, onSkip, color }) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/90 p-6 backdrop-blur-md anim-fade">
@@ -457,12 +450,22 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
   }, [defaultOrderType, isOpen]);
 
   useEffect(() => {
-    if (exactLocation && storeLoc) {
-      const dist = calculateDistance(storeLoc.lat, storeLoc.lng, exactLocation.lat, exactLocation.lng);
-      setDistanceKm(dist.toFixed(1));
-      const cost = Math.ceil(PRECIO_BASE + dist * PRECIO_POR_KM);
-      setDeliveryCost(cost);
-    }
+    if (!exactLocation || !storeLoc) return;
+    let cancelled = false;
+    // Pedimos km por ruta REAL via Google Distance Matrix.
+    // Si no hay key o falla la API, internamente cae a Haversine.
+    getRouteDistanceKm(
+      { lat: storeLoc.lat, lng: storeLoc.lng },
+      { lat: exactLocation.lat, lng: exactLocation.lng }
+    ).then((res) => {
+      if (cancelled) return;
+      const km = res.km || 0;
+      setDistanceKm(km.toFixed(1));
+      setDeliveryCost(Math.ceil(PRECIO_BASE + km * PRECIO_POR_KM));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [exactLocation, storeLoc]);
 
   const handleLocationSelect = (pos) => setExactLocation(pos);
@@ -762,6 +765,19 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
                     </span>
                   )}
                 </div>
+                <AddressAutocomplete
+                  value={exactLocation ? { address: exactLocation.address || '', lat: exactLocation.lat, lng: exactLocation.lng } : null}
+                  onChange={(data) => {
+                    if (data.lat && data.lng) {
+                      handleLocationSelect({ lat: data.lat, lng: data.lng, address: data.address });
+                    }
+                  }}
+                  placeholder="Buscá tu dirección…"
+                  className="mb-3"
+                />
+                <p className="mono mb-2 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                  O ajustá con el mapa
+                </p>
                 <LocationPicker
                   onLocationSelect={handleLocationSelect}
                   storeLocation={storeLoc}

@@ -2,6 +2,8 @@ import { Bike, Camera, Check, CreditCard, Edit, Globe, MapPin, Plus, Save, Star,
 import Button from '../../components/shared/ui/Button';
 import Eyebrow from '../../components/shared/ui/Eyebrow';
 import Rule from '../../components/shared/ui/Rule';
+import AddressAutocomplete from '../../components/shared/AddressAutocomplete';
+import StoreMap from '../../components/shared/StoreMap';
 
 export default function ConfigTab({
   viewBranchId,
@@ -279,12 +281,30 @@ export default function ConfigTab({
             <Rule className="mt-4" />
             <div className="mt-5 space-y-4">
               <div>
-                <label className="eyebrow mb-2 block">Dirección física</label>
-                <input
-                  className="w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text focus:border-text focus:outline-none"
-                  value={branchForm.address}
-                  onChange={(event) => setBranchForm({ ...branchForm, address: event.target.value })}
+                <label className="eyebrow mb-2 block">Dirección</label>
+                <AddressAutocomplete
+                  value={
+                    branchForm.address || branchForm.lat
+                      ? { address: branchForm.address || '', lat: branchForm.lat, lng: branchForm.lng }
+                      : null
+                  }
+                  onChange={(data) =>
+                    setBranchForm({
+                      ...branchForm,
+                      address: data.address,
+                      lat: data.lat,
+                      lng: data.lng,
+                    })
+                  }
+                  placeholder="Buscá la dirección de la sucursal…"
                 />
+                <button
+                  type="button"
+                  onClick={onGetBranchLocation}
+                  className="mono mt-2 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ml-soft hover:text-text"
+                >
+                  <MapPin className="h-3.5 w-3.5" /> Usar mi ubicación actual
+                </button>
               </div>
               <div>
                 <label className="eyebrow mb-2 block">Teléfono / WhatsApp</label>
@@ -294,36 +314,15 @@ export default function ConfigTab({
                   onChange={(event) => setBranchForm({ ...branchForm, phone: event.target.value })}
                 />
               </div>
-            </div>
-          </section>
-
-          <section className="rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6">
-            <Eyebrow>Geolocalización</Eyebrow>
-            <Rule className="mt-4" />
-            <div className="mt-5 grid grid-cols-2 gap-4">
-              <div>
-                <label className="eyebrow mb-2 block">Latitud</label>
-                <input
-                  className="num w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text focus:border-text focus:outline-none"
-                  value={branchForm.lat || ''}
-                  onChange={(event) => setBranchForm({ ...branchForm, lat: event.target.value })}
+              {branchForm.lat && branchForm.lng && (
+                <StoreMap
+                  lat={Number(branchForm.lat)}
+                  lng={Number(branchForm.lng)}
+                  label={getBranchName(viewBranchId) || 'Sucursal'}
+                  height={200}
                 />
-              </div>
-              <div>
-                <label className="eyebrow mb-2 block">Longitud</label>
-                <input
-                  className="num w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text focus:border-text focus:outline-none"
-                  value={branchForm.lng || ''}
-                  onChange={(event) => setBranchForm({ ...branchForm, lng: event.target.value })}
-                />
-              </div>
+              )}
             </div>
-            <button
-              onClick={onGetBranchLocation}
-              className="mono mt-4 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ml-soft hover:text-text"
-            >
-              <MapPin className="h-3.5 w-3.5" /> Usar mi ubicación actual
-            </button>
           </section>
 
           <div className="flex justify-end">

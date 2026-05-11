@@ -13,6 +13,7 @@ import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import StoreMap from '../components/shared/StoreMap';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -526,6 +527,16 @@ export default function BookingHome() {
             <div className="mono mt-4 inline-flex items-center gap-2 rounded-full border border-acid/40 bg-acid/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-acid">
               <span className="h-1.5 w-1.5 rounded-full bg-acid" /> Abierto ahora
             </div>
+            {store?.lat && store?.lng && (
+              <div className="mt-6">
+                <StoreMap
+                  lat={Number(store.lat)}
+                  lng={Number(store.lng)}
+                  label={store.name}
+                  height={200}
+                />
+              </div>
+            )}
           </div>
         </div>
       </header>

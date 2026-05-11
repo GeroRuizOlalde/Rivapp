@@ -26,6 +26,7 @@ export const appConfig = {
     import.meta.env.VITE_SENTRY_ENVIRONMENT?.trim() ||
     (import.meta.env.PROD ? 'production' : 'development'),
   sentryRelease: import.meta.env.VITE_SENTRY_RELEASE?.trim() || '',
+  googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || '',
 };
 
 export const buildAppUrl = (path = '') => {
