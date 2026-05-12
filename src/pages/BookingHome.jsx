@@ -112,7 +112,15 @@ export default function BookingHome() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('mercadopago');
+  // Opciones de pago disponibles según lo que el dueño habilitó
+  const hasMpEnabled = Boolean(store?.enable_payments);
+  const hasTransferEnabled = Boolean(store?.cbu_alias);
+  const defaultPayment = hasMpEnabled
+    ? 'mercadopago'
+    : hasTransferEnabled
+    ? 'transferencia'
+    : 'cash';
+  const [paymentMethod, setPaymentMethod] = useState(defaultPayment);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -432,7 +440,11 @@ export default function BookingHome() {
       }
 
       const paymentText =
-        paymentMethod === 'mercadopago' ? `${E_CHECK} Pagado con Mercado Pago` : `${E_HOME} A pagar en el local`;
+        paymentMethod === 'mercadopago'
+          ? `${E_CHECK} Pagado con Mercado Pago`
+          : paymentMethod === 'transferencia'
+          ? `🏦 Transferencia (Alias: ${store?.cbu_alias || ''})`
+          : `${E_HOME} A pagar en el local`;
       msg += `${E_CARD} *Pago:* ${paymentText}`;
 
       const encodedMsg = encodeURIComponent(msg);
@@ -882,15 +894,27 @@ export default function BookingHome() {
                 {/* Pago */}
                 <div className="mt-8">
                   <Rule label="Forma de pago" />
-                  <div className="mt-6 flex gap-3">
-                    <PaymentOption
-                      id="mercadopago"
-                      icon={CreditCard}
-                      label="Mercado Pago"
-                      hint="Pago online"
-                      selected={paymentMethod}
-                      onSelect={setPaymentMethod}
-                    />
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    {hasMpEnabled && (
+                      <PaymentOption
+                        id="mercadopago"
+                        icon={CreditCard}
+                        label="Mercado Pago"
+                        hint="Pago online"
+                        selected={paymentMethod}
+                        onSelect={setPaymentMethod}
+                      />
+                    )}
+                    {hasTransferEnabled && (
+                      <PaymentOption
+                        id="transferencia"
+                        icon={Copy}
+                        label="Transferencia"
+                        hint="CBU / Alias"
+                        selected={paymentMethod}
+                        onSelect={setPaymentMethod}
+                      />
+                    )}
                     <PaymentOption
                       id="cash"
                       icon={Banknote}
@@ -902,30 +926,34 @@ export default function BookingHome() {
                   </div>
 
                   <AnimatePresence>
-                    {paymentMethod === 'mercadopago' && store?.cbu_alias && (
+                    {paymentMethod === 'transferencia' && store?.cbu_alias && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="mt-4 flex items-center justify-between rounded-[var(--radius-md)] border border-ml/30 bg-ml/10 p-4">
-                          <div className="min-w-0">
-                            <p className="mono text-[10px] uppercase tracking-[0.22em] text-ml-soft">
-                              Alias / CBU de respaldo
-                            </p>
-                            <p className="mono mt-1 select-all truncate text-base font-semibold text-text">
+                        <div className="mt-4 rounded-[var(--radius-md)] border border-acid/30 bg-acid/[0.05] p-4">
+                          <p className="mono text-[10px] uppercase tracking-[0.22em] text-acid">
+                            Transferí a:
+                          </p>
+                          <div className="mt-2 flex items-center justify-between gap-3">
+                            <p className="mono select-all truncate text-lg font-semibold text-text">
                               {store.cbu_alias}
                             </p>
+                            <button
+                              onClick={copyAlias}
+                              className={`shrink-0 rounded-[10px] p-2 transition-colors ${
+                                copied ? 'bg-acid text-ink' : 'bg-ink-3 text-text hover:bg-white/10'
+                              }`}
+                              aria-label="Copiar alias"
+                            >
+                              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            </button>
                           </div>
-                          <button
-                            onClick={copyAlias}
-                            className={`rounded-[10px] p-2 transition-colors ${
-                              copied ? 'bg-acid text-ink' : 'bg-ml text-white hover:brightness-110'
-                            }`}
-                          >
-                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                          </button>
+                          <p className="mt-3 text-xs text-text-muted">
+                            Después de transferir, mandanos el comprobante por WhatsApp para confirmar tu turno.
+                          </p>
                         </div>
                       </motion.div>
                     )}
@@ -977,6 +1005,8 @@ export default function BookingHome() {
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : paymentMethod === 'mercadopago' ? (
                     <>Ir a pagar <ArrowRight className="h-4 w-4" /></>
+                  ) : paymentMethod === 'transferencia' ? (
+                    <>Confirmar turno (con transferencia) <CheckCircle2 className="h-4 w-4" /></>
                   ) : (
                     <>Confirmar turno <CheckCircle2 className="h-4 w-4" /></>
                   )}

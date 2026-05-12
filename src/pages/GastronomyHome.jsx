@@ -428,7 +428,15 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
   const [exactLocation, setExactLocation] = useState(preloadedLocation || null);
   const [distanceKm, setDistanceKm] = useState(0);
   const [deliveryCost, setDeliveryCost] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('mercadopago');
+  // Opciones de pago disponibles según lo que el dueño habilitó.
+  const hasMpEnabled = Boolean(config?.enable_payments);
+  const hasTransferEnabled = Boolean(config?.cbu_alias);
+  const defaultPayment = hasMpEnabled
+    ? 'mercadopago'
+    : hasTransferEnabled
+    ? 'transferencia'
+    : 'efectivo';
+  const [paymentMethod, setPaymentMethod] = useState(defaultPayment);
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
@@ -606,7 +614,13 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
         msg += `\n`;
       });
       msg += `\n💰 *TOTAL FINAL:* $${total.toLocaleString('es-AR')}\n`;
-      msg += `💳 *Forma de Pago:* ${paymentMethod === 'mercadopago' ? '✅ Mercado Pago' : '💵 Efectivo'}\n\n`;
+      const payLabel =
+        paymentMethod === 'mercadopago'
+          ? '✅ Mercado Pago'
+          : paymentMethod === 'transferencia'
+          ? `🏦 Transferencia (Alias: ${config?.cbu_alias || ''})`
+          : '💵 Efectivo';
+      msg += `💳 *Forma de Pago:* ${payLabel}\n\n`;
       msg += `📦 *MÉTODO DE ENTREGA:*\n`;
       if (deliveryMode === 'delivery') {
         msg += `🛵 *Envío a Domicilio*\n`;
@@ -801,17 +815,30 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
           {/* Pago */}
           <section>
             <Rule label="Forma de pago" />
-            <div className="mt-5 flex gap-3">
-              <PaymentOption
-                id="mercadopago"
-                icon={CreditCard}
-                label="Mercado Pago"
-                hint="Pago online"
-                selected={paymentMethod}
-                onSelect={setPaymentMethod}
-                color={brandColor}
-                customColor="#009EE3"
-              />
+            <div className="mt-5 flex flex-wrap gap-3">
+              {hasMpEnabled && (
+                <PaymentOption
+                  id="mercadopago"
+                  icon={CreditCard}
+                  label="Mercado Pago"
+                  hint="Pago online"
+                  selected={paymentMethod}
+                  onSelect={setPaymentMethod}
+                  color={brandColor}
+                  customColor="#009EE3"
+                />
+              )}
+              {hasTransferEnabled && (
+                <PaymentOption
+                  id="transferencia"
+                  icon={Copy}
+                  label="Transferencia"
+                  hint="CBU / Alias"
+                  selected={paymentMethod}
+                  onSelect={setPaymentMethod}
+                  color={brandColor}
+                />
+              )}
               <PaymentOption
                 id="efectivo"
                 icon={Banknote}
@@ -823,30 +850,34 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
               />
             </div>
             <AnimatePresence>
-              {paymentMethod === 'mercadopago' && config?.cbu_alias && (
+              {paymentMethod === 'transferencia' && config?.cbu_alias && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="mt-4 flex items-center justify-between rounded-[var(--radius-md)] border border-ml/30 bg-ml/10 p-4">
-                    <div className="min-w-0">
-                      <p className="mono text-[10px] uppercase tracking-[0.22em] text-ml-soft">
-                        Alias de respaldo
-                      </p>
-                      <p className="mono mt-1 select-all truncate font-semibold text-text">
+                  <div className="mt-4 rounded-[var(--radius-md)] border border-acid/30 bg-acid/[0.05] p-4">
+                    <p className="mono text-[10px] uppercase tracking-[0.22em] text-acid">
+                      Transferí a:
+                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="mono select-all truncate text-lg font-semibold text-text">
                         {config.cbu_alias}
                       </p>
+                      <button
+                        onClick={copyAlias}
+                        className={`shrink-0 rounded-[8px] p-2 transition-colors ${
+                          copied ? 'bg-acid text-ink' : 'bg-ink-3 text-text hover:bg-white/10'
+                        }`}
+                        aria-label="Copiar alias"
+                      >
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </button>
                     </div>
-                    <button
-                      onClick={copyAlias}
-                      className={`rounded-[8px] p-2 transition-colors ${
-                        copied ? 'bg-acid text-ink' : 'bg-ml text-white hover:brightness-110'
-                      }`}
-                    >
-                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </button>
+                    <p className="mt-3 text-xs text-text-muted">
+                      Mandanos el comprobante por WhatsApp después de transferir para confirmar el pedido.
+                    </p>
                   </div>
                 </motion.div>
               )}
@@ -914,7 +945,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
           <button
             onClick={handleCheckout}
             disabled={isSending}
-            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold shadow-[var(--shadow-lift)] transition-all active:scale-95 hover:brightness-110"
+            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] py-4 font-semibold shadow-[var(--shadow-lift)] transition-all hover:brightness-110 active:scale-95"
             style={{
               backgroundColor: paymentMethod === 'mercadopago' ? '#009EE3' : brandColor,
               color: paymentMethod === 'mercadopago' ? 'white' : 'black',
@@ -924,6 +955,8 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : paymentMethod === 'mercadopago' ? (
               <>Pagar con Mercado Pago <ArrowRight className="h-4 w-4" /></>
+            ) : paymentMethod === 'transferencia' ? (
+              <>Confirmar pedido (con transferencia) <ChevronRight className="h-4 w-4" /></>
             ) : (
               <>Enviar pedido por WhatsApp <ChevronRight className="h-4 w-4" /></>
             )}
