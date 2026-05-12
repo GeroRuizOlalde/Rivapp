@@ -197,6 +197,7 @@ export default function AdminServices() {
     enable_payments: false,
     mp_public_key: '',
     mp_access_token: '',
+    cbu_alias: '',
   });
   const [slotsConfig, setSlotsConfig] = useState({ enable_multislots: false, max_concurrent_slots: 1 });
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -367,6 +368,7 @@ export default function AdminServices() {
         color_accent: store.color_accent || '#2563eb',
         enable_staff_selection: store.enable_staff_selection ?? true,
         enable_payments: store.enable_payments ?? false,
+        cbu_alias: store.cbu_alias || '',
         // Empezamos vacíos — los valores reales viven en store_secrets y se
         // muestran como bullets en placeholder cuando mpStatus dice "cargado".
         mp_public_key: '',
@@ -620,6 +622,7 @@ export default function AdminServices() {
         color_accent: profileForm.color_accent,
         enable_staff_selection: profileForm.enable_staff_selection,
         enable_payments: profileForm.enable_payments,
+        cbu_alias: profileForm.cbu_alias || null,
       })
       .eq('id', store.id);
     if (error) {
@@ -2035,6 +2038,29 @@ export default function AdminServices() {
                       />
                     </motion.div>
                   )}
+
+                  <Rule />
+
+                  <div>
+                    <p className="display text-lg text-text">
+                      Transferencia bancaria
+                    </p>
+                    <p className="mono mt-1 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                      Si no querés usar Mercado Pago, mostramos tu alias al cliente para que transfiera.
+                    </p>
+                    <div className="mt-3">
+                      <label className="eyebrow mb-2 block">CBU o Alias</label>
+                      <input
+                        className="mono w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text placeholder:text-text-subtle focus:border-text focus:outline-none"
+                        placeholder="MI.ALIAS.MP  o  0000003100000000000000"
+                        value={profileForm.cbu_alias || ''}
+                        onChange={(e) => setProfileForm({ ...profileForm, cbu_alias: e.target.value })}
+                      />
+                      <p className="mono mt-2 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                        Dejá vacío si solo cobrás con MP o efectivo.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

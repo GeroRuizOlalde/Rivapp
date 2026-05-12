@@ -206,6 +206,29 @@ export default function ConfigTab({
             </label>
           </section>
 
+          {/* Transferencia bancaria */}
+          <section className="rounded-[var(--radius-xl)] border border-rule-strong bg-ink-2 p-6">
+            <Eyebrow>
+              <CreditCard className="h-3 w-3" /> Transferencia bancaria
+            </Eyebrow>
+            <p className="mt-3 text-sm text-text-muted">
+              Si no querés usar Mercado Pago, podés recibir transferencias. Mostramos el alias al cliente para que copie y transfiera.
+            </p>
+            <Rule className="mt-4" />
+            <div className="mt-5">
+              <label className="eyebrow mb-2 block">CBU o Alias</label>
+              <input
+                className="mono w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-sm text-text placeholder:text-text-subtle focus:border-text focus:outline-none"
+                placeholder="MI.ALIAS.MP  o  0000003100000000000000"
+                value={settingsForm.cbu_alias || ''}
+                onChange={(event) => setSettingsForm({ ...settingsForm, cbu_alias: event.target.value })}
+              />
+              <p className="mono mt-2 text-[10px] uppercase tracking-[0.22em] text-text-subtle">
+                Dejá vacío si solo cobrás con MP o efectivo.
+              </p>
+            </div>
+          </section>
+
           {/* Mercado Pago */}
           <section className="rounded-[var(--radius-xl)] border border-ml/30 bg-ml/[0.05] p-6">
             <div className="flex items-start justify-between gap-3">
