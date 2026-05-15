@@ -4,3 +4,9 @@ dist
 .DS_Store
 .vscode
 supabase/functions/**/.env
+
+# Playwright
+/playwright-report
+/test-results
+/blob-report
+/.playwright
