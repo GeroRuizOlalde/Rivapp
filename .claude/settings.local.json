@@ -15,7 +15,18 @@
       "Bash(npx skills *)",
       "Bash(taskkill //F //IM node.exe)",
       "Bash(npm run *)",
-      "Bash(sort -k2 -h)"
+      "Bash(sort -k2 -h)",
+      "Bash(npx --version)",
+      "Bash(npx playwright *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(Remove-Item .git/COMMIT_MSG_TMP.txt)",
+      "Bash(rm -f .git/COMMIT_MSG_TMP.txt; git log -1 --format='%s'; echo '--- status ---'; git status --porcelain)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\geror.GERO\\OneDrive\\Documentos\\GitHub\\Rivapp\\.git"
     ]
   }
 }
