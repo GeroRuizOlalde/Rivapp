@@ -15,9 +15,13 @@ import { useGoogleMaps } from '../../hooks/useGoogleMaps';
  *   - className
  */
 export default function StoreMap({ lat, lng, label = '', height = 240, className = '' }) {
-  const { isLoaded } = useGoogleMaps();
+  const { isLoaded, loadError } = useGoogleMaps();
 
   if (!lat || !lng) return null;
+
+  // Si el script de Google Maps no logró cargar (API key inválida, bloqueo de
+  // red, etc.) no mostramos un recuadro vacío: ocultamos el mapa por completo.
+  if (loadError) return null;
 
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
@@ -81,17 +85,18 @@ export default function StoreMap({ lat, lng, label = '', height = 240, className
   );
 }
 
-// Estilo dark-mode minimalista para el mapa.
+// Estilo dark-mode minimalista para el mapa. Contraste subido para que las
+// calles se distingan del fondo y no parezca una línea suelta.
 const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#1a1a18' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#A19B8D' }] },
+  { elementType: 'geometry', stylers: [{ color: '#2b2b27' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#B8B2A4' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#0A0A08' }] },
   { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#F7F5EE' }] },
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a2a26' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6A6459' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3a3a34' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#54544b' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9A9486' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#6e6e62' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0A0A08' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#444' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#14140f' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#555' }] },
 ];
