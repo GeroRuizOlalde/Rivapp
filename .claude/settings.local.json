@@ -23,7 +23,14 @@
       "Bash(git commit -m '@ *)",
       "Bash(git commit *)",
       "Bash(Remove-Item .git/COMMIT_MSG_TMP.txt)",
-      "Bash(rm -f .git/COMMIT_MSG_TMP.txt; git log -1 --format='%s'; echo '--- status ---'; git status --porcelain)"
+      "Bash(rm -f .git/COMMIT_MSG_TMP.txt; git log -1 --format='%s'; echo '--- status ---'; git status --porcelain)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "Bash(git branch *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\geror.GERO\\OneDrive\\Documentos\\GitHub\\Rivapp\\.git"
