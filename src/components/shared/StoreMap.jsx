@@ -48,7 +48,7 @@ export default function StoreMap({ lat, lng, label = '', height = 240, className
   // Sin API key → fallback con link a Google Maps
   if (!appConfig.googleMapsApiKey) {
     return (
-      <div className={`rounded-[var(--radius-md)] border border-rule bg-ink-3 p-5 ${className}`}>
+      <div className={`w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-5 ${className}`}>
         <div className="flex items-start gap-3">
           <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-acid" />
           <div className="min-w-0 flex-1">
@@ -71,7 +71,7 @@ export default function StoreMap({ lat, lng, label = '', height = 240, className
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-[var(--radius-md)] border border-rule ${className}`}>
+    <div className={`relative w-full overflow-hidden rounded-[var(--radius-md)] border border-rule ${className}`}>
       {isLoaded ? (
         <GoogleMap
           mapContainerStyle={{ width: '100%', height }}

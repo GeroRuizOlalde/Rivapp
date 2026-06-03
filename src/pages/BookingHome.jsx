@@ -540,7 +540,7 @@ export default function BookingHome() {
               <span className="h-1.5 w-1.5 rounded-full bg-acid" /> Abierto ahora
             </div>
             {store?.lat && store?.lng && (
-              <div className="mt-6">
+              <div className="mt-6 w-full">
                 <StoreMap
                   lat={Number(store.lat)}
                   lng={Number(store.lng)}
