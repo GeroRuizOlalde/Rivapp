@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import { MapPin, Navigation } from 'lucide-react';
 import { appConfig } from '../../config/appConfig';
 import { useGoogleMaps } from '../../hooks/useGoogleMaps';
+
+// Google llama a window.gm_authFailure cuando la key no está autorizada para la
+// Maps JavaScript API (API no habilitada, sin facturación, referrer bloqueado).
+// En ese caso los tiles nunca cargan: lo registramos para ocultar el mapa.
+let mapsAuthFailed = false;
+const authListeners = new Set();
+if (typeof window !== 'undefined') {
+  window.gm_authFailure = () => {
+    mapsAuthFailed = true;
+    authListeners.forEach((fn) => fn());
+  };
+}
 
 /**
  * Mapa estático embebido con la ubicación de la tienda/sucursal.
@@ -16,12 +28,20 @@ import { useGoogleMaps } from '../../hooks/useGoogleMaps';
  */
 export default function StoreMap({ lat, lng, label = '', height = 240, className = '' }) {
   const { isLoaded, loadError } = useGoogleMaps();
+  const [authFailed, setAuthFailed] = useState(mapsAuthFailed);
+
+  useEffect(() => {
+    const fn = () => setAuthFailed(true);
+    authListeners.add(fn);
+    return () => authListeners.delete(fn);
+  }, []);
 
   if (!lat || !lng) return null;
 
-  // Si el script de Google Maps no logró cargar (API key inválida, bloqueo de
-  // red, etc.) no mostramos un recuadro vacío: ocultamos el mapa por completo.
-  if (loadError) return null;
+  // Si el script no cargó (loadError) o Google rechazó la autenticación de la
+  // Maps JavaScript API (authFailed), no mostramos un recuadro vacío: ocultamos
+  // el mapa por completo.
+  if (loadError || authFailed) return null;
 
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
