@@ -27,6 +27,7 @@ const formatPrice = (n) => `$${n.toLocaleString('es-AR')}`;
 import Button from '../components/shared/ui/Button';
 import Eyebrow from '../components/shared/ui/Eyebrow';
 import Rule from '../components/shared/ui/Rule';
+import AddressAutocomplete from '../components/shared/AddressAutocomplete';
 
 const BELL_SOUND_URL = '/sounds/ding.mp3';
 
@@ -190,6 +191,8 @@ export default function AdminServices() {
     name: '',
     phone: '',
     address: '',
+    lat: null,
+    lng: null,
     logo_url: '',
     banner_url: '',
     color_accent: '#2563eb',
@@ -363,6 +366,8 @@ export default function AdminServices() {
         name: store.name || '',
         phone: store.phone || '',
         address: store.address || '',
+        lat: store.lat ?? null,
+        lng: store.lng ?? null,
         logo_url: store.logo_url || '',
         banner_url: store.banner_url || '',
         color_accent: store.color_accent || '#2563eb',
@@ -617,6 +622,8 @@ export default function AdminServices() {
         name: profileForm.name,
         phone: profileForm.phone,
         address: profileForm.address,
+        lat: profileForm.lat,
+        lng: profileForm.lng,
         logo_url: profileForm.logo_url,
         banner_url: profileForm.banner_url,
         color_accent: profileForm.color_accent,
@@ -1941,14 +1948,12 @@ export default function AdminServices() {
 
                 <div>
                   <label className="eyebrow mb-2 block">Dirección</label>
-                  <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 focus-within:border-text">
-                    <MapPin className="h-4 w-4 text-text-muted" />
-                    <input
-                      className="w-full bg-transparent text-sm text-text outline-none"
-                      value={profileForm.address}
-                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                    />
-                  </div>
+                  <AddressAutocomplete
+                    value={{ address: profileForm.address, lat: profileForm.lat, lng: profileForm.lng }}
+                    onChange={({ address, lat, lng }) =>
+                      setProfileForm((p) => ({ ...p, address, lat, lng }))
+                    }
+                  />
                 </div>
 
                 <Rule />
