@@ -214,7 +214,7 @@ export default function AdminServices() {
 
   const [newService, setNewService] = useState({ name: '', price: '', duration: 30 });
   const [newStaff, setNewStaff] = useState({ name: '', role: '', avatar_url: '' });
-  const [newCoupon, setNewCoupon] = useState({ code: '', discount: 10 });
+  const [newCoupon, setNewCoupon] = useState({ code: '', discount: 10, max_uses: '' });
   const [manualApt, setManualApt] = useState({
     customer_name: '',
     customer_phone: '',
@@ -751,10 +751,16 @@ export default function AdminServices() {
   const handleCreateCoupon = async (e) => {
     e.preventDefault();
     await supabase.from('coupons').insert([
-      { store_id: store.id, code: newCoupon.code.toUpperCase(), discount: newCoupon.discount, active: true },
+      {
+        store_id: store.id,
+        code: newCoupon.code.toUpperCase(),
+        discount: newCoupon.discount,
+        active: true,
+        max_uses: newCoupon.max_uses ? parseInt(newCoupon.max_uses) : null,
+      },
     ]);
     setShowCouponModal(false);
-    setNewCoupon({ code: '', discount: 10 });
+    setNewCoupon({ code: '', discount: 10, max_uses: '' });
     fetchCoupons();
   };
 
@@ -1711,11 +1717,16 @@ export default function AdminServices() {
                     Código
                   </p>
                   <p className="display mono mt-3 text-3xl text-text">{c.code}</p>
-                  <p
-                    className="mono mt-4 inline-block rounded-full bg-acid/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-acid"
-                  >
-                    -{c.discount}% OFF
-                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <p className="mono inline-block rounded-full bg-acid/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-acid">
+                      -{c.discount}% OFF
+                    </p>
+                    {c.max_uses != null && (
+                      <p className={`mono inline-block rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${c.uses_count >= c.max_uses ? 'bg-signal/10 text-signal' : 'bg-ink-4 text-text-muted'}`}>
+                        {c.uses_count}/{c.max_uses} usos
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -2423,6 +2434,18 @@ export default function AdminServices() {
               onChange={(e) => setNewCoupon({ ...newCoupon, discount: e.target.value })}
               required
             />
+            <div>
+              <label className="eyebrow mb-2 block">Cantidad de usos</label>
+              <input
+                className="num w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-center text-lg font-semibold text-text focus:border-text focus:outline-none"
+                type="number"
+                min="1"
+                placeholder="Sin límite"
+                value={newCoupon.max_uses}
+                onChange={(e) => setNewCoupon({ ...newCoupon, max_uses: e.target.value })}
+              />
+              <p className="mt-1 text-[11px] text-text-muted">Dejalo vacío para usos ilimitados</p>
+            </div>
             <div className="flex gap-3 pt-2">
               <Button type="button" onClick={() => setShowCouponModal(false)} variant="outline" size="md" className="flex-1">
                 Cancelar

@@ -145,7 +145,7 @@ export default function AdminGastronomy() {
   const [tempExtra, setTempExtra] = useState({ name: '', price: '' });
   const [promoConfig, setPromoConfig] = useState({ type: 'discount', value: 15, buy: 2, pay: 1 });
   const [newRider, setNewRider] = useState({ name: '', phone: '', access_pin: '', branch_id: '' });
-  const [newCoupon, setNewCoupon] = useState({ code: '', discount: 10 });
+  const [newCoupon, setNewCoupon] = useState({ code: '', discount: 10, max_uses: '' });
   const [priceConfig, setPriceConfig] = useState({ type: 'percent', action: 'increase', value: 0 });
   const [selectedCategory, setSelectedCategory] = useState('Todos');
 
@@ -830,8 +830,14 @@ export default function AdminGastronomy() {
     e.preventDefault();
     await supabase
       .from('coupons')
-      .insert([{ store_id: config.id, code: newCoupon.code.toUpperCase(), discount: newCoupon.discount }]);
+      .insert([{
+        store_id: config.id,
+        code: newCoupon.code.toUpperCase(),
+        discount: newCoupon.discount,
+        max_uses: newCoupon.max_uses ? parseInt(newCoupon.max_uses) : null,
+      }]);
     setShowCouponModal(false);
+    setNewCoupon({ code: '', discount: 10, max_uses: '' });
     fetchCoupons();
   };
   const deleteCoupon = async (id) => {

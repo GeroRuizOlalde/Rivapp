@@ -73,7 +73,7 @@ CREATE TABLE stores (
     business_type TEXT NOT NULL DEFAULT 'gastronomia' CHECK (business_type IN ('gastronomia', 'turnos')),
 
     -- Suscripcion
-    plan_type TEXT NOT NULL DEFAULT 'trial' CHECK (plan_type IN ('trial', 'basic', 'premium', 'pro')),
+    plan_type TEXT NOT NULL DEFAULT 'trial' CHECK (plan_type IN ('trial', 'emprendedor', 'profesional', 'pro')),
     subscription_status TEXT NOT NULL DEFAULT 'active' CHECK (subscription_status IN ('active', 'suspended', 'expired')),
     subscription_expiry TIMESTAMPTZ,
     subscription_price NUMERIC DEFAULT 0,
@@ -342,6 +342,8 @@ CREATE TABLE coupons (
     store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
     code TEXT NOT NULL,
     discount NUMERIC NOT NULL DEFAULT 10 CHECK (discount > 0 AND discount <= 100),
+    max_uses INTEGER DEFAULT NULL,
+    uses_count INTEGER NOT NULL DEFAULT 0,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

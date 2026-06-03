@@ -35,9 +35,16 @@ export default function CouponsTab({ coupons, onCreateCoupon, onDeleteCoupon }) 
               </button>
             </div>
             <p className="display mono mt-4 text-3xl text-text">{c.code}</p>
-            <p className="mono mt-4 inline-block rounded-full bg-acid/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-acid">
-              -{c.discount}% OFF
-            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <p className="mono inline-block rounded-full bg-acid/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-acid">
+                -{c.discount}% OFF
+              </p>
+              {c.max_uses != null && (
+                <p className={`mono inline-block rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${c.uses_count >= c.max_uses ? 'bg-signal/10 text-signal' : 'bg-ink-4 text-text-muted'}`}>
+                  {c.uses_count}/{c.max_uses} usos
+                </p>
+              )}
+            </div>
           </div>
         ))}
         {coupons.length === 0 && (

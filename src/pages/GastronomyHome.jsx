@@ -438,6 +438,7 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
     : 'efectivo';
   const [paymentMethod, setPaymentMethod] = useState(defaultPayment);
   const [couponCode, setCouponCode] = useState('');
+  const [appliedCouponId, setAppliedCouponId] = useState(null);
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -497,12 +498,21 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
       .select('*')
       .eq('code', couponCode.toUpperCase())
       .eq('store_id', config.id)
+      .eq('active', true)
       .single();
     if (data) {
+      if (data.max_uses != null && data.uses_count >= data.max_uses) {
+        setDiscount(0);
+        setAppliedCouponId(null);
+        setCouponMessage('Cupón agotado');
+        return;
+      }
       setDiscount(data.discount);
+      setAppliedCouponId(data.id);
       setCouponMessage(`-${data.discount}% aplicado`);
     } else {
       setDiscount(0);
+      setAppliedCouponId(null);
       setCouponMessage('Cupón inválido');
     }
   };
@@ -546,6 +556,10 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
 
       if (error) throw error;
       const newOrder = data[0];
+
+      if (appliedCouponId) {
+        await supabase.rpc('increment_coupon_uses', { p_coupon_id: appliedCouponId });
+      }
 
       for (const item of cart) {
         const { error: stockError } = await supabase.rpc('decrement_stock', {

@@ -298,8 +298,14 @@ export default function BookingHome() {
       .eq('code', couponCode.toUpperCase())
       .eq('active', true)
       .single();
-    if (data) setAppliedCoupon(data);
-    else {
+    if (data) {
+      if (data.max_uses != null && data.uses_count >= data.max_uses) {
+        toast.error('Cupón agotado');
+        setAppliedCoupon(null);
+      } else {
+        setAppliedCoupon(data);
+      }
+    } else {
       toast.error('Cupón inválido o expirado');
       setAppliedCoupon(null);
     }
@@ -370,6 +376,10 @@ export default function BookingHome() {
         .single();
 
       if (error) throw error;
+
+      if (appliedCoupon) {
+        await supabase.rpc('increment_coupon_uses', { p_coupon_id: appliedCoupon.id });
+      }
 
       if (paymentMethod === 'mercadopago') {
         const invokeRes = await supabase.functions.invoke('create-order-preference', {

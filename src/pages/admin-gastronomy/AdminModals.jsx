@@ -1013,10 +1013,24 @@ export function CouponModal({ newCoupon, setNewCoupon, accentColor, contrastText
           <input
             className="num flex-1 rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-center text-lg font-semibold text-text focus:border-text focus:outline-none"
             type="number"
+            min="1"
+            max="100"
             value={newCoupon.discount}
             onChange={(e) => setNewCoupon({ ...newCoupon, discount: e.target.value })}
           />
           <span className="mono text-lg font-semibold text-acid">%</span>
+        </div>
+        <div>
+          <label className="eyebrow mb-2 block">Cantidad de usos</label>
+          <input
+            className="num w-full rounded-[var(--radius-md)] border border-rule bg-ink-3 p-3 text-center text-lg font-semibold text-text focus:border-text focus:outline-none"
+            type="number"
+            min="1"
+            placeholder="Sin límite"
+            value={newCoupon.max_uses}
+            onChange={(e) => setNewCoupon({ ...newCoupon, max_uses: e.target.value })}
+          />
+          <p className="mt-1 text-[11px] text-text-muted">Dejalo vacío para usos ilimitados</p>
         </div>
         <button
           type="submit"
