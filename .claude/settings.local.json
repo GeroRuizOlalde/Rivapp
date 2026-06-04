@@ -31,7 +31,8 @@
       "mcp__claude_ai_Vercel__list_deployments",
       "Bash(git branch *)",
       "Bash(git push *)",
-      "Bash(xargs grep -l \"coupon\\\\|cupone\")"
+      "Bash(xargs grep -l \"coupon\\\\|cupone\")",
+      "Bash(npx eslint *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\geror.GERO\\OneDrive\\Documentos\\GitHub\\Rivapp\\.git"

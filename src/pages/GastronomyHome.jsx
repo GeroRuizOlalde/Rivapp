@@ -28,6 +28,7 @@ import StoreMap from '../components/shared/StoreMap';
 import GoogleLocationPicker from '../components/shared/GoogleLocationPicker';
 import { appConfig } from '../config/appConfig';
 import { getRouteDistanceKm } from '../utils/distance';
+import { openBlankTab, sendToWhatsApp, closeBlankTab } from '../utils/whatsapp';
 
 let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconSize: [25, 41], iconAnchor: [12, 41] });
 L.Marker.prototype.options.icon = DefaultIcon;
@@ -525,6 +526,10 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
 
     setIsSending(true);
 
+    // Abrimos la pestaña YA (gesto del usuario) para que iOS no la bloquee
+    // después del await. La redirigimos a WhatsApp al final.
+    const waTab = openBlankTab();
+
     const googleMapsLink = exactLocation
       ? `http://googleusercontent.com/maps.google.com/?q=${exactLocation.lat},${exactLocation.lng}`
       : '';
@@ -606,6 +611,9 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
           logger.error('Error MP:', errMsg);
           toast.warning(errMsg);
         } else if (mpData?.init_point) {
+          // Vamos a Mercado Pago en la pestaña actual: la pestaña de WhatsApp
+          // ya no se usa.
+          closeBlankTab(waTab);
           window.location.href = mpData.init_point;
           return;
         }
@@ -649,9 +657,10 @@ const CartModal = ({ isOpen, onClose, defaultOrderType, onSuccess, config, prelo
       clearCart();
       onClose();
 
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${adminPhone}&text=${encodeURIComponent(msg)}`;
-      window.open(whatsappUrl, '_blank');
+      const whatsappUrl = `https://wa.me/${adminPhone}?text=${encodeURIComponent(msg)}`;
+      sendToWhatsApp(waTab, whatsappUrl);
     } catch (err) {
+      closeBlankTab(waTab);
       toast.error('Error al procesar el pedido: ' + err.message);
       logger.error(err);
     } finally {

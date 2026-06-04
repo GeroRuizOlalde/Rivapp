@@ -14,6 +14,7 @@ import Rule from '../components/shared/ui/Rule';
 import { useToast } from '../components/shared/toastContext';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import StoreMap from '../components/shared/StoreMap';
+import { openBlankTab, sendToWhatsApp, closeBlankTab } from '../utils/whatsapp';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -322,6 +323,10 @@ export default function BookingHome() {
     if (!selectedDate || !selectedTime || !selectedService || !customerData.name || !customerData.phone) return;
     setSaving(true);
 
+    // Abrimos la pestaña YA (gesto del usuario) para que iOS no la bloquee
+    // después del await. La redirigimos a WhatsApp al final.
+    const waTab = openBlankTab();
+
     try {
       const isoStartDateTime = `${selectedDate}T${selectedTime}:00`;
       const startDateObj = new Date(isoStartDateTime);
@@ -348,6 +353,7 @@ export default function BookingHome() {
           finalStaffId = staffList[0]?.id;
         } else {
           toast.warning('¡Ups! Ese horario acaba de ocuparse por completo.');
+          closeBlankTab(waTab);
           setSaving(false);
           return;
         }
@@ -413,6 +419,7 @@ export default function BookingHome() {
           logger.error('Error MP:', errMsg);
           toast.warning(errMsg);
         } else if (mpData?.init_point) {
+          closeBlankTab(waTab);
           window.location.href = mpData.init_point;
           return;
         }
@@ -458,8 +465,9 @@ export default function BookingHome() {
       msg += `${E_CARD} *Pago:* ${paymentText}`;
 
       const encodedMsg = encodeURIComponent(msg);
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${store.phone || ''}&text=${encodedMsg}`;
-      window.open(whatsappUrl, '_blank');
+      const cleanStorePhone = String(store.phone || '').replace(/\D/g, '');
+      const whatsappUrl = `https://wa.me/${cleanStorePhone}?text=${encodedMsg}`;
+      sendToWhatsApp(waTab, whatsappUrl);
 
       toast.success('¡Turno solicitado con éxito!');
 
@@ -471,6 +479,7 @@ export default function BookingHome() {
       setAppliedCoupon(null);
       setCouponCode('');
     } catch (error) {
+      closeBlankTab(waTab);
       logger.error(error);
       toast.error('Error al reservar: ' + error.message);
     } finally {

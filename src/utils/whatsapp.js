@@ -9,6 +9,43 @@ export const buildWhatsAppUrl = (phone, message) => {
   return `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
 };
 
+// --- Apertura confiable en iOS/Safari ---------------------------------------
+// iOS/Safari bloquea window.open() si se llama DESPUÉS de un await (pierde el
+// contexto del gesto del usuario). El patrón confiable es abrir una pestaña en
+// blanco de forma sincrónica dentro del onClick y recién después redirigirla.
+
+// Llamar SINCRÓNICAMENTE al inicio del handler, antes de cualquier await.
+export const openBlankTab = () => {
+  try {
+    return window.open('', '_blank');
+  } catch {
+    return null;
+  }
+};
+
+// Redirige la pestaña ya abierta a WhatsApp. Si el navegador la bloqueó (null),
+// navega la pestaña actual para no perder el envío.
+export const sendToWhatsApp = (tab, url) => {
+  if (!url) return;
+  if (tab && !tab.closed) {
+    tab.location.href = url;
+  } else {
+    window.location.href = url;
+  }
+};
+
+// Cierra la pestaña en blanco si abortamos antes de redirigir (error, o cuando
+// el flujo redirige a otro destino como Mercado Pago).
+export const closeBlankTab = (tab) => {
+  if (tab && !tab.closed) {
+    try {
+      tab.close();
+    } catch {
+      /* noop */
+    }
+  }
+};
+
 // Mensaje que el cliente final manda al local cuando confirma su pedido.
 export const buildOrderMessage = ({
   storeName,
